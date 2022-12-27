@@ -1,6 +1,6 @@
 FROM rocker/rstudio:4.2.2
 
-RUN apt-get update -qq && apt-get -y --no-install-recommends install \
+RUN apt-get update -qq && apt-get -y install \
       libbz2-dev \
       liblzma-dev \
       libxml2-dev \
