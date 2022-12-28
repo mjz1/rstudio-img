@@ -94,6 +94,8 @@ RUN apt-get install -y unixodbc-dev
 RUN apt-get install -y zlib1g-dev
 RUN R CMD javareconf
 
+RUN apt-get install -y build-dep build-essential
+
 RUN rm -rf /var/lib/apt/lists/*
 
 RUN R -e 'update.packages(ask=F)'
