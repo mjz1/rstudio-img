@@ -94,7 +94,11 @@ RUN apt-get install -y unixodbc-dev
 RUN apt-get install -y zlib1g-dev
 RUN R CMD javareconf
 
-RUN apt-get install -y build-dep build-essential
+RUN apt-get install -y build-essential
+RUN apt-get install -y curl
+RUN apt-get install -y wget
+RUN apt-get install -y less
+RUN apt-get install -y vim
 
 RUN rm -rf /var/lib/apt/lists/*
 
