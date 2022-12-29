@@ -100,6 +100,9 @@ RUN apt-get install -y wget
 RUN apt-get install -y less
 RUN apt-get install -y vim
 
+# Setup tinytex
+RUN quarto install tool tinytex 
+
 RUN rm -rf /var/lib/apt/lists/*
 
 RUN R -e 'update.packages(ask=F)'
