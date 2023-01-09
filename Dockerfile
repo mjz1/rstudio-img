@@ -103,6 +103,12 @@ RUN apt-get install -y vim
 # Setup tinytex
 RUN quarto install tool tinytex 
 
+# Update quarto to the latest release
+COPY install_quarto_latest.sh /scripts/install_quarto_latest.sh
+
+RUN chmod +x /scripts/install_quarto_latest.sh
+RUN /scripts/install_quarto_latest.sh
+
 RUN rm -rf /var/lib/apt/lists/*
 
 RUN R -e 'update.packages(ask=F)'
