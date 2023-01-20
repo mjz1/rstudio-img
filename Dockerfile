@@ -100,14 +100,18 @@ RUN apt-get install -y wget
 RUN apt-get install -y less
 RUN apt-get install -y vim
 
-# Setup tinytex
-RUN quarto install tool tinytex 
-
 # Update quarto to the latest release
 COPY install_quarto_latest.sh /scripts/install_quarto_latest.sh
 
 RUN chmod +x /scripts/install_quarto_latest.sh
 RUN /scripts/install_quarto_latest.sh
+
+# Setup tinytex
+RUN quarto install tool tinytex 
+
+# Install git-lfs
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+RUN sudo apt-get install git-lfs
 
 RUN rm -rf /var/lib/apt/lists/*
 
