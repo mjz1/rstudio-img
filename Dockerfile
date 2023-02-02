@@ -99,6 +99,8 @@ RUN apt-get install -y curl
 RUN apt-get install -y wget
 RUN apt-get install -y less
 RUN apt-get install -y vim
+RUN apt-get install -y libssh-dev
+
 
 # Update quarto to the latest release
 COPY install_quarto_latest.sh /scripts/install_quarto_latest.sh
