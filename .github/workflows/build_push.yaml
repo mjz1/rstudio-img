@@ -27,7 +27,7 @@ jobs:
           - image: zatzmanm/rstudio
             dockerfile: Dockerfile
           - image: zatzmanm/rstudio_gpu
-            dockerfile: gpu.Dockerfile
+            dockerfile: ./gpu/Dockerfile
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
