@@ -1,4 +1,4 @@
-FROM rocker/rstudio:4.3.2
+FROM rocker/ml:4.3.2
 
 RUN apt-get update -qq 
 RUN apt-get install -y automake
@@ -103,10 +103,10 @@ RUN apt-get install -y libssh-dev
 
 
 # Update quarto to the latest release
-COPY /install_quarto_latest.sh /scripts/install_quarto_latest.sh
+# COPY /install_quarto_latest.sh /scripts/install_quarto_latest.sh
 
-RUN chmod +x /scripts/install_quarto_latest.sh
-RUN /scripts/install_quarto_latest.sh
+# RUN chmod +x /scripts/install_quarto_latest.sh
+# RUN /scripts/install_quarto_latest.sh
 
 # Setup tinytex
 RUN quarto install tool tinytex 

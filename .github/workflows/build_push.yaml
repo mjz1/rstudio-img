@@ -10,6 +10,9 @@
 name: Publish Docker image
 
 on:
+  push:
+    branches:
+      - 'cuda'
   release:
     types: [published]
 
@@ -17,6 +20,14 @@ jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: zatzmanm/rstudio
+            dockerfile: Dockerfile
+          - image: zatzmanm/rstudio_gpu
+            dockerfile: gpu.Dockerfile
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
@@ -31,12 +42,13 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: zatzmanm/rstudio
+          images: ${{ matrix.image }}
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
