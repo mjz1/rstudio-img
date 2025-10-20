@@ -1,4 +1,4 @@
-FROM rocker/rstudio:4.4.1
+FROM rocker/rstudio:4.5.1
 
 RUN apt-get update -qq 
 RUN apt-get install -y automake
