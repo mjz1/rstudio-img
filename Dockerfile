@@ -76,7 +76,7 @@ RUN apt-get install -y make
 RUN apt-get install -y nvidia-cuda-dev
 RUN apt-get install -y ocl-icd-opencl-dev
 RUN apt-get install -y pandoc
-RUN apt-get install -y pandoc-citeproc
+# RUN apt-get install -y pandoc-citeproc
 RUN apt-get install -y pari-gp
 RUN apt-get install -y perl
 RUN apt-get install -y pkg-config
