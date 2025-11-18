@@ -118,3 +118,5 @@ RUN sudo apt-get install git-lfs
 RUN rm -rf /var/lib/apt/lists/*
 
 RUN R -e 'update.packages(ask=F)'
+
+RUN echo 'copilot-enabled=1' >> /etc/rstudio/rsession.conf
