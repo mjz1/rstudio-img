@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        r_version: ["4.5"]  # Build latest only to save CI time/space
+        r_version: ["4.3", "4.4", "4.5"]
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
