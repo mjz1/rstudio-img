@@ -1,0 +1,36 @@
+# Git files
+.git
+.gitignore
+.github
+
+# Docker Compose mounted directories
+work
+data
+
+# Documentation (not needed in image)
+README.md
+AGENTS.md
+CHANGELOG.md
+
+# Environment files
+.env
+.env.example
+
+# Build artifacts
+*.log
+*.tar
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp
+temp
