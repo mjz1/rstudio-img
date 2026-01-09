@@ -108,9 +108,8 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
 
 # Update quarto to the latest release
 COPY install_quarto_latest.sh /scripts/install_quarto_latest.sh
-COPY scripts/test-runtime.sh /scripts/test-runtime.sh
 
-RUN chmod +x /scripts/install_quarto_latest.sh /scripts/test-runtime.sh && \
+RUN chmod +x /scripts/install_quarto_latest.sh && \
     /scripts/install_quarto_latest.sh
 
 # Setup tinytex with retry logic

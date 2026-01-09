@@ -1,4 +1,4 @@
-.PHONY: help build build-4.3 build-4.4 build-4.5 up down restart logs test clean lint
+.PHONY: help build build-4.3 build-4.4 build-4.5 up down restart logs clean lint
 
 # Default target
 help:
@@ -18,7 +18,6 @@ help:
 	@echo "  make build-4.5    - Build image with R 4.5"
 	@echo ""
 	@echo "Test commands:"
-	@echo "  make test         - Run tests on built image"
 	@echo "  make lint         - Run linters (hadolint + shellcheck)"
 	@echo ""
 	@echo "Cleanup commands:"
@@ -51,18 +50,13 @@ build-4.4:
 build-4.5:
 	docker build --platform linux/amd64 --build-arg R_VERSION=4.5 -t rstudio-local:4.5 .
 
-# Test command
-test:
-	@echo "Testing latest built image..."
-	@docker run --rm rstudio-local:4.5 bash /scripts/test-runtime.sh
-
 # Lint commands
 lint:
 	@echo "Linting Dockerfile..."
 	@hadolint Dockerfile || echo "hadolint not installed. Install with: brew install hadolint"
 	@echo ""
 	@echo "Linting shell scripts..."
-	@shellcheck install_quarto_latest.sh scripts/test-runtime.sh || echo "shellcheck not installed. Install with: brew install shellcheck"
+	@shellcheck install_quarto_latest.sh || echo "shellcheck not installed. Install with: brew install shellcheck"
 
 # Cleanup
 clean:

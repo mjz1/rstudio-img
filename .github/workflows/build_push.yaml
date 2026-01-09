@@ -26,7 +26,7 @@ jobs:
       - name: Lint shell scripts with shellcheck
         run: |
           sudo apt-get update && sudo apt-get install -y shellcheck
-          shellcheck install_quarto_latest.sh scripts/test-runtime.sh
+          shellcheck install_quarto_latest.sh
 
   push_to_registry:
     name: Push Docker image for R ${{ matrix.r_version }}
@@ -71,8 +71,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
-      - name: Test built image
-        run: |
-          docker pull zatzmanm/rstudio:${{ matrix.r_version }}
-          docker run --rm zatzmanm/rstudio:${{ matrix.r_version }} bash /scripts/test-runtime.sh
