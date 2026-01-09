@@ -2,8 +2,8 @@
 
 Customized Docker images for RStudio Server with scientific computing packages, supporting multiple R versions.
 
-[![Publish Docker images](https://github.com/zatzmanm/rstudio-img/actions/workflows/build_push.yaml/badge.svg)](https://github.com/zatzmanm/rstudio-img/actions/workflows/build_push.yaml)
-[![PR Validation](https://github.com/zatzmanm/rstudio-img/actions/workflows/pr-validation.yaml/badge.svg)](https://github.com/zatzmanm/rstudio-img/actions/workflows/pr-validation.yaml)
+[![Publish Docker images](https://github.com/mjz1/rstudio-img/actions/workflows/build_push.yaml/badge.svg)](https://github.com/mjz1/rstudio-img/actions/workflows/build_push.yaml)
+[![PR Validation](https://github.com/mjz1/rstudio-img/actions/workflows/pr-validation.yaml/badge.svg)](https://github.com/mjz1/rstudio-img/actions/workflows/pr-validation.yaml)
 
 ## Docker Images
 
