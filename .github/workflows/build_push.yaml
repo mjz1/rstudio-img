@@ -5,6 +5,9 @@ on:
     types: [published]
   workflow_dispatch:
 
+env:
+  LATEST_R_VERSION: '4.5'
+
 jobs:
   lint:
     name: Lint Dockerfile and Scripts
@@ -54,7 +57,7 @@ jobs:
             type=ref,event=tag
             type=raw,value=${{ github.ref_name }}-r${{ matrix.r_version }}
             type=raw,value=${{ matrix.r_version }}
-            type=raw,value=latest,enable=${{ matrix.r_version == '4.5' }}
+            type=raw,value=latest,enable=${{ matrix.r_version == env.LATEST_R_VERSION }}
         
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

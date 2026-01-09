@@ -15,7 +15,17 @@ R -e "install.packages('testthat', repos='https://cran.rstudio.com/', quiet=TRUE
 
 echo ""
 echo "3. Testing core R packages..."
-R -e "library(ggplot2); library(dplyr); print('Core packages loaded successfully')" 2>&1 || echo "Warning: Some core packages not pre-installed (expected)"
+R -e "
+if (!require('ggplot2', quietly=TRUE)) {
+  install.packages('ggplot2', repos='https://cran.rstudio.com/', quiet=TRUE)
+}
+if (!require('dplyr', quietly=TRUE)) {
+  install.packages('dplyr', repos='https://cran.rstudio.com/', quiet=TRUE)
+}
+library(ggplot2)
+library(dplyr)
+print('Core packages loaded successfully')
+"
 
 echo ""
 echo "4. Testing Quarto installation..."
