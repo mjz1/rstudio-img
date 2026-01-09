@@ -121,8 +121,8 @@ RUN for attempt in {1..3}; do \
       sleep 5; \
     done
 
-# hadolint ignore=DL3008
 # Setup git-lfs
+# hadolint ignore=DL3008
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
     apt-get install -y --no-install-recommends git-lfs && \
     rm -rf /var/lib/apt/lists/*
