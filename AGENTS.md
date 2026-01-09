@@ -13,10 +13,7 @@ docker build --platform linux/amd64 -t rstudio:v0.3 .
 ./build.sh
 ```
 
-### Multi-architecture Build (for releases)
-```bash
-# Build for multiple platforms
-docker buildx build --platform linux/amd64,linux/arm64 -t zatzmanm/rstudio:latest .
+### Release Build (AMD64 only)
 ```
 
 ### Development Build (with cache mount)

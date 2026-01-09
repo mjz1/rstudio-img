@@ -44,7 +44,7 @@ Access at http://localhost:8787
 - Username: `rstudio`
 - Password: `yourpassword`
 
-**Note:** Images are AMD64. Docker automatically handles emulation on ARM64 hosts (Apple Silicon).
+**Note:** Images are built for `linux/amd64` (AMD64/x86_64). Docker automatically handles emulation on `linux/arm64` (ARM64) hosts (e.g., Apple Silicon).
 
 ## Local Development
 
