@@ -1,0 +1,28 @@
+# Docker Compose mounted volumes
+work/
+data/
+
+# Environment files with potential secrets
+.env
+
+# Docker artifacts
+*.tar
+*.deb
+
+# Build artifacts
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/

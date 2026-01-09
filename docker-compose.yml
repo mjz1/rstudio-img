@@ -1,0 +1,24 @@
+services:
+  rstudio:
+    container_name: rstudio-dev
+    platform: linux/amd64
+    build:
+      context: .
+      args:
+        - R_VERSION=${R_VERSION:-4.5}
+    ports:
+      - "8787:8787"
+    environment:
+      - PASSWORD=${RSTUDIO_PASSWORD:-rstudio}
+      - USER=${RSTUDIO_USER:-rstudio}
+      - ROOT=TRUE
+    volumes:
+      - ./work:/home/rstudio/work
+      - ./data:/home/rstudio/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
