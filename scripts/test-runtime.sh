@@ -23,12 +23,14 @@ quarto --version
 
 echo ""
 echo "5. Testing Quarto rendering..."
-echo "---" > /tmp/test.qmd
-echo "title: 'Test Document'" >> /tmp/test.qmd
-echo "---" >> /tmp/test.qmd
-echo "" >> /tmp/test.qmd
-echo "# Test" >> /tmp/test.qmd
-echo "This is a test." >> /tmp/test.qmd
+cat <<'EOF' > /tmp/test.qmd
+---
+title: 'Test Document'
+---
+
+# Test
+This is a test.
+EOF
 quarto render /tmp/test.qmd --to html --quiet && echo "Quarto rendering: OK" || echo "Quarto rendering: FAILED"
 rm -f /tmp/test.qmd /tmp/test.html
 
