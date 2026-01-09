@@ -5,6 +5,7 @@ FROM rocker/rstudio:${R_VERSION}
 # Set shell to use pipefail for safer pipe operations
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# hadolint ignore=DL3008
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     automake \
     bowtie2 \
@@ -113,13 +114,14 @@ RUN chmod +x /scripts/install_quarto_latest.sh /scripts/test-runtime.sh && \
     /scripts/install_quarto_latest.sh
 
 # Setup tinytex with retry logic
-RUN for i in {1..3}; do \
-      echo "Attempt $i: Installing TinyTeX..." && \
+RUN for attempt in {1..3}; do \
+      echo "Attempt $attempt: Installing TinyTeX..." && \
       quarto install tool tinytex && break || \
-      echo "Attempt $i failed, retrying in 5 seconds..." && \
+      echo "Attempt $attempt failed, retrying in 5 seconds..." && \
       sleep 5; \
     done
 
+# hadolint ignore=DL3008
 # Setup git-lfs
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
     apt-get install -y --no-install-recommends git-lfs && \

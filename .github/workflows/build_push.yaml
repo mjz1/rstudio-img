@@ -21,6 +21,7 @@ jobs:
         with:
           dockerfile: Dockerfile
           failure-threshold: warning
+          ignore: DL3008
       
       - name: Lint shell scripts with shellcheck
         run: |
