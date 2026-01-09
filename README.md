@@ -36,10 +36,14 @@ For each GitHub release (e.g., `v1.0.0`), the following additional tags are crea
 
 ## Quick Start
 
-Run RStudio Server locally:
+Run RStudio Server locally (using either Docker Hub or GHCR):
 
 ```bash
+# From Docker Hub
 docker run -d -p 8787:8787 -e PASSWORD=yourpassword zatzmanm/rstudio:latest
+
+# Or from GitHub Container Registry
+docker run -d -p 8787:8787 -e PASSWORD=yourpassword ghcr.io/mjz1/rstudio-img:latest
 ```
 
 Access at http://localhost:8787
@@ -98,9 +102,6 @@ make logs
 
 # Build specific R version
 make build-4.5
-
-# Run tests
-make test
 
 # Lint code
 make lint
@@ -232,7 +233,7 @@ docker logs rstudio-dev
 2. Create a feature branch
 3. Make your changes
 4. Run linters: `make lint`
-5. Build and test locally: `make build && make test`
+5. Build locally: `make build`
 6. Submit a pull request
 
 ### Code Standards
@@ -255,7 +256,7 @@ To add support for a new R version:
 
 ### Automated Builds
 
-Images are automatically built and pushed to Docker Hub:
+Images are automatically built and pushed to Docker Hub and GitHub Container Registry:
 - On GitHub releases (all R versions)
 - On manual workflow dispatch
 
@@ -264,17 +265,7 @@ Images are automatically built and pushed to Docker Hub:
 Pull requests trigger:
 - Dockerfile linting (hadolint)
 - Shell script linting (shellcheck)  
-- Test build for R 4.5
-- Runtime test suite
-
-### Testing
-
-Each build includes:
-- R version verification
-- Package installation test
-- Quarto rendering test
-- System tools validation
-- Scientific library checks
+- Test build for R 4.5 (validates Dockerfile builds successfully)
 
 ## License
 
@@ -287,5 +278,6 @@ Built on top of the excellent [Rocker Project](https://rocker-project.org/) imag
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/zatzmanm/rstudio-img/issues
+- GitHub Issues: https://github.com/mjz1/rstudio-img/issues
 - Docker Hub: https://hub.docker.com/r/zatzmanm/rstudio
+- GitHub Container Registry: https://github.com/mjz1/rstudio-img/pkgs/container/rstudio-img

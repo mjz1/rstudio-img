@@ -4,16 +4,27 @@ This document provides guidelines for agentic coding assistants working on the r
 
 ## Build Commands
 
+### Using Makefile (Recommended)
+```bash
+# View all available commands
+make help
+
+# Build image with default R version (4.5)
+make build
+
+# Build specific R version
+make build-4.3
+make build-4.4
+make build-4.5
+
+# Lint code
+make lint
+```
+
 ### Full Build
 ```bash
 # Build the Docker image locally
-docker build --platform linux/amd64 -t rstudio:v0.3 .
-
-# Or use the provided build script
-./build.sh
-```
-
-### Release Build (AMD64 only)
+docker build --platform linux/amd64 -t rstudio:test .
 ```
 
 ### Development Build (with cache mount)
@@ -33,10 +44,13 @@ docker build --platform linux/amd64 -t rstudio:test .
 docker images | grep rstudio
 ```
 
-### Runtime Test
+### Manual Runtime Verification (Optional)
 ```bash
 # Run the container to test basic functionality
-docker run -d --name rstudio-test -p 8787:8787 rstudio:test
+docker run -d --name rstudio-test -p 8787:8787 -e PASSWORD=test rstudio:test
+
+# Access RStudio at http://localhost:8787 to verify it works
+# Username: rstudio, Password: test
 
 # Test R installation
 docker exec rstudio-test R --version
@@ -48,19 +62,16 @@ docker exec rstudio-test quarto --version
 docker stop rstudio-test && docker rm rstudio-test
 ```
 
-### Package Verification Test
+### Package Verification (Optional)
 ```bash
-# Test key scientific packages are installed
-docker run --rm rstudio:test R -e "library(ggplot2); library(dplyr); print('Core packages working')"
+# Test key scientific packages
+docker run --rm rstudio:test R -e "library(stats); print('R base packages working')"
 
 # Test system tools
 docker run --rm rstudio:test bash -c "bowtie2 --version && cmake --version"
-```
 
-### Single Test Run (Package Installation)
-```bash
 # Test a specific package installation
-docker run --rm rstudio:test R -e "install.packages('testthat'); library(testthat); print('Package installation works')"
+docker run --rm rstudio:test R -e "install.packages('testthat', repos='https://cran.rstudio.com/'); library(testthat); print('Package installation works')"
 ```
 
 ## Lint Commands
@@ -77,10 +88,10 @@ docker run --rm -i hadolint/hadolint < Dockerfile
 ### Shell Script Linting
 ```bash
 # Lint shell scripts with shellcheck
-shellcheck build.sh install_quarto_latest.sh
+shellcheck install_quarto_latest.sh
 
 # Fix common issues automatically
-shellcheck -f diff build.sh | git apply
+shellcheck -f diff install_quarto_latest.sh | git apply
 ```
 
 ### YAML Linting (GitHub Actions)
@@ -257,17 +268,17 @@ wget "$URL" || error_exit "Failed to download from $URL"
 ### Testing Strategy
 
 #### Automated Testing
-- GitHub Actions runs on releases
-- Manual testing for complex changes
-- Verify package installations work
-- Test container startup and basic functionality
+- GitHub Actions runs linting on PRs and releases
+- Build verification on PRs ensures Dockerfile builds successfully
+- No automated runtime tests - manual verification recommended for complex changes
 
 #### Manual Testing Checklist
 - [ ] Image builds without errors
 - [ ] Container starts successfully
-- [ ] RStudio interface loads
-- [ ] Key packages are available
+- [ ] RStudio interface loads at http://localhost:8787
+- [ ] Can install and load R packages
 - [ ] Quarto is installed and functional
 - [ ] System tools work (git, cmake, etc.)
+- [ ] Scientific libraries accessible (gdal, bowtie2, etc.)
 
 This guide ensures consistent development practices for maintaining the rstudio-img Docker image repository.
