@@ -7,23 +7,25 @@ Customized Docker images for RStudio Server with scientific computing packages, 
 
 ## Docker Images
 
-Available on [Docker Hub](https://hub.docker.com/r/zatzmanm/rstudio/tags)
+Available on:
+- [Docker Hub](https://hub.docker.com/r/zatzmanm/rstudio/tags): `zatzmanm/rstudio`
+- [GitHub Container Registry](https://github.com/mjz1/rstudio-img/pkgs/container/rstudio-img): `ghcr.io/mjz1/rstudio-img`
 
 ### Supported R Versions
 
-- `zatzmanm/rstudio:4.3` - Latest R 4.3.X
-- `zatzmanm/rstudio:4.4` - Latest R 4.4.X
-- `zatzmanm/rstudio:4.5` - Latest R 4.5.X
-- `zatzmanm/rstudio:latest` - Points to R 4.5 (highest version)
+- `zatzmanm/rstudio:4.3` or `ghcr.io/mjz1/rstudio-img:4.3` - Latest R 4.3.X
+- `zatzmanm/rstudio:4.4` or `ghcr.io/mjz1/rstudio-img:4.4` - Latest R 4.4.X
+- `zatzmanm/rstudio:4.5` or `ghcr.io/mjz1/rstudio-img:4.5` - Latest R 4.5.X
+- `zatzmanm/rstudio:latest` or `ghcr.io/mjz1/rstudio-img:latest` - Points to R 4.5 (highest version)
 
 ### Versioned Releases
 
-For each GitHub release (e.g., `v1.0.0`), the following additional tags are created:
+For each GitHub release (e.g., `v1.0.0`), the following additional tags are created on both registries:
 
-- `zatzmanm/rstudio:v1.0.0` - Release snapshot
-- `zatzmanm/rstudio:v1.0.0-r4.3` - Release + R 4.3
-- `zatzmanm/rstudio:v1.0.0-r4.4` - Release + R 4.4  
-- `zatzmanm/rstudio:v1.0.0-r4.5` - Release + R 4.5
+- `v1.0.0` - Release snapshot
+- `v1.0.0-r4.3` - Release + R 4.3
+- `v1.0.0-r4.4` - Release + R 4.4  
+- `v1.0.0-r4.5` - Release + R 4.5
 
 ## Prerequisites
 
