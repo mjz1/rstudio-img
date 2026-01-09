@@ -1,4 +1,4 @@
-.PHONY: help build build-4.3 build-4.4 build-4.5 up down restart logs clean lint
+.PHONY: help build build-4.3 build-4.4 build-4.5 build-all up down restart logs clean lint pr-validate
 
 # Default target
 help:
@@ -16,6 +16,8 @@ help:
 	@echo "  make build-4.3    - Build image with R 4.3"
 	@echo "  make build-4.4    - Build image with R 4.4"
 	@echo "  make build-4.5    - Build image with R 4.5"
+	@echo "  make build-all    - Build images for R 4.3, 4.4, 4.5"
+	@echo "  make pr-validate  - Run lint and build-all (mirrors CI PR build)"
 	@echo ""
 	@echo "Test commands:"
 	@echo "  make lint         - Run linters (hadolint + shellcheck)"
@@ -50,6 +52,12 @@ build-4.4:
 build-4.5:
 	docker build --platform linux/amd64 --build-arg R_VERSION=4.5 -t rstudio-local:4.5 .
 
+# Build all supported R versions
+build-all:
+	$(MAKE) build-4.3
+	$(MAKE) build-4.4
+	$(MAKE) build-4.5
+
 # Lint commands
 lint:
 	@echo "Linting Dockerfile..."
@@ -57,6 +65,11 @@ lint:
 	@echo ""
 	@echo "Linting shell scripts..."
 	@shellcheck install_quarto_latest.sh || echo "shellcheck not installed. Install with: brew install shellcheck"
+
+# Run the same steps as PR validation locally
+pr-validate:
+	$(MAKE) lint
+	$(MAKE) build-all
 
 # Cleanup
 clean:

@@ -71,7 +71,9 @@ jobs:
             type=ref,event=tag
             type=raw,value=${{ github.ref_name }}-r${{ matrix.r_version }}
             type=raw,value=${{ matrix.r_version }}
-            type=raw,value=latest,enable=${{ matrix.r_version == env.LATEST_R_VERSION }}
+            type=raw,value=latest,enable=${{ matrix.r_version == env.LATEST_R_VERSION && github.ref != 'refs/heads/dev' }}
+            type=raw,value=${{ matrix.r_version }}-dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' && matrix.r_version == env.LATEST_R_VERSION }}
         
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

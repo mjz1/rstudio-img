@@ -61,7 +61,6 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     libproj-dev \
     libprotobuf-dev \
     libquantlib0-dev \
-    librdf0-dev \
     librsvg2-dev \
     libsasl2-dev \
     libsecret-1-dev \

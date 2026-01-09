@@ -5,7 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 2026-01-09
+
+### Fixed
+- Resolve R 4.3 build failure by removing `librdf0-dev`, which pulled in `libraptor2-dev` and conflicted with `libcurl4-openssl-dev`.
+
+### Changed
+- CI: PR validation workflow now builds all R matrix versions (4.3, 4.4, 4.5) to catch version-specific build issues early.
+- CI: Build workflow now publishes dev images on push to `dev` branch, tagged with `-dev` suffix (e.g., `4.5-dev`, `dev`).
+
+### Added
+- Makefile: `build-all` target to build images for R 4.3, 4.4, and 4.5 in one command.
+- Makefile: `pr-validate` target to run linters and `build-all` locally, mirroring CI PR validation.
+- Documentation updates in README and AGENTS to reflect local validation steps and removal of automated runtime tests.
 
 ## [1.0.0] - 2026-01-09
 
