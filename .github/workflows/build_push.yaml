@@ -4,9 +4,13 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  schedule:
+    # Monthly rebuild so rolling tags pick up new RStudio Server, Quarto,
+    # and R patch releases without requiring a manual release
+    - cron: '0 6 1 * *'
 
 env:
-  LATEST_R_VERSION: '4.5'
+  LATEST_R_VERSION: '4.6'
 
 permissions:
   contents: read
@@ -39,11 +43,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        r_version: ["4.3", "4.4", "4.5"]
+        r_version: ["4.3", "4.4", "4.5", "4.6"]
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
-        
+
+      - name: Resolve latest stable RStudio Server version
+        id: rstudio
+        run: |
+          effective_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            "https://rstudio.org/download/latest/stable/server/jammy/rstudio-server-latest-amd64.deb")
+          filename=$(basename "$effective_url")
+          version=${filename#rstudio-server-}
+          version=${version%-amd64.deb}
+          version=${version/-/+}
+          echo "Resolved RStudio Server version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -69,7 +85,7 @@ jobs:
             ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=tag
-            type=raw,value=${{ github.ref_name }}-r${{ matrix.r_version }}
+            type=raw,value=${{ github.ref_name }}-r${{ matrix.r_version }},enable=${{ github.event_name != 'schedule' }}
             type=raw,value=${{ matrix.r_version }}
             type=raw,value=latest,enable=${{ matrix.r_version == env.LATEST_R_VERSION && github.ref != 'refs/heads/dev' }}
             type=raw,value=${{ matrix.r_version }}-dev,enable=${{ github.ref == 'refs/heads/dev' }}
@@ -81,7 +97,9 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          build-args: R_VERSION=${{ matrix.r_version }}
+          build-args: |
+            R_VERSION=${{ matrix.r_version }}
+            RSTUDIO_VERSION=${{ steps.rstudio.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

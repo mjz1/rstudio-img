@@ -9,13 +9,14 @@ This document provides guidelines for agentic coding assistants working on the r
 # View all available commands
 make help
 
-# Build image with default R version (4.5)
+# Build image with default R version (4.6)
 make build
 
 # Build specific R version
 make build-4.3
 make build-4.4
 make build-4.5
+make build-4.6
 
 # Lint code
 make lint

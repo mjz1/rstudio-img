@@ -16,7 +16,10 @@ Available on:
 - `zatzmanm/rstudio:4.3` or `ghcr.io/mjz1/rstudio-img:4.3` - Latest R 4.3.X
 - `zatzmanm/rstudio:4.4` or `ghcr.io/mjz1/rstudio-img:4.4` - Latest R 4.4.X
 - `zatzmanm/rstudio:4.5` or `ghcr.io/mjz1/rstudio-img:4.5` - Latest R 4.5.X
-- `zatzmanm/rstudio:latest` or `ghcr.io/mjz1/rstudio-img:latest` - Points to R 4.5 (highest version)
+- `zatzmanm/rstudio:4.6` or `ghcr.io/mjz1/rstudio-img:4.6` - Latest R 4.6.X
+- `zatzmanm/rstudio:latest` or `ghcr.io/mjz1/rstudio-img:latest` - Points to R 4.6 (highest version)
+
+All images ship the **latest stable RStudio Server** release regardless of R version — the rocker base images pin the RStudio version that was current when each R version was last built, and this repo upgrades it at build time.
 
 ### Versioned Releases
 
@@ -26,6 +29,7 @@ For each GitHub release (e.g., `v1.0.0`), the following additional tags are crea
 - `v1.0.0-r4.3` - Release + R 4.3
 - `v1.0.0-r4.4` - Release + R 4.4  
 - `v1.0.0-r4.5` - Release + R 4.5
+- `v1.0.0-r4.6` - Release + R 4.6
 
 ## Prerequisites
 
@@ -69,8 +73,8 @@ Access at http://localhost:8787
 
 3. Edit `.env` to configure your setup:
    ```bash
-   # R version (4.3, 4.4, or 4.5)
-   R_VERSION=4.5
+   # R version (4.3, 4.4, 4.5, or 4.6)
+   R_VERSION=4.6
    
    # RStudio credentials
    RSTUDIO_USER=rstudio
@@ -101,7 +105,7 @@ make up
 make logs
 
 # Build specific R version
-make build-4.5
+make build-4.6
 
 # Lint code
 make lint
@@ -115,13 +119,19 @@ make down
 Build for a specific R version:
 
 ```bash
-docker build --build-arg R_VERSION=4.5 -t rstudio-local:4.5 .
+docker build --build-arg R_VERSION=4.6 -t rstudio-local:4.6 .
 ```
 
 Run the built image:
 
 ```bash
-docker run -d -p 8787:8787 -e PASSWORD=rstudio rstudio-local:4.5
+docker run -d -p 8787:8787 -e PASSWORD=rstudio rstudio-local:4.6
+```
+
+By default the build installs the latest **stable** RStudio Server release. To pin an exact version (or use the `preview`/`daily` channel):
+
+```bash
+docker build --build-arg R_VERSION=4.6 --build-arg RSTUDIO_VERSION=2026.06.0+242 -t rstudio-local:4.6 .
 ```
 
 ## Included Packages
@@ -182,10 +192,11 @@ For users who need native ARM64 performance for local development, we may provid
 
 ## Versioning Strategy
 
-- **R Version Tags**: `rstudio:4.3`, `rstudio:4.4`, `rstudio:4.5` - Always point to the latest build for each R major version
-- **Latest Tag**: `rstudio:latest` - Always points to the highest R version (currently 4.5)
-- **Release Tags**: For each GitHub release `vX.Y.Z`, creates versioned snapshots like `rstudio:v1.0.0-r4.5`
+- **R Version Tags**: `rstudio:4.3`, `rstudio:4.4`, `rstudio:4.5`, `rstudio:4.6` - Always point to the latest build for each R major version
+- **Latest Tag**: `rstudio:latest` - Always points to the highest R version (currently 4.6)
+- **Release Tags**: For each GitHub release `vX.Y.Z`, creates versioned snapshots like `rstudio:v1.0.0-r4.6`
 - Uses latest available rocker/rstudio tags for each major R version
+- **RStudio Server**: Always upgraded to the latest stable Posit release at build time (rocker bases pin old RStudio versions for older R versions)
 - Release tags preserve build history for reproducible deployments
 
 ## Troubleshooting
@@ -240,7 +251,7 @@ docker logs rstudio-dev
 
 - Follow Dockerfile best practices
 - Use `shellcheck` for shell scripts
-- Test changes with all R versions (4.3, 4.4, 4.5)
+- Test changes with all R versions (4.3, 4.4, 4.5, 4.6)
 - Update CHANGELOG.md for notable changes
 
 ### Adding New R Versions
@@ -259,13 +270,18 @@ To add support for a new R version:
 Images are automatically built and pushed to Docker Hub and GitHub Container Registry:
 - On GitHub releases (all R versions)
 - On manual workflow dispatch
+- On a monthly schedule, so the rolling tags (`4.3`–`4.6`, `latest`) pick up new RStudio Server, Quarto, and R patch releases automatically
+
+The CI resolves the current stable RStudio Server version and passes it as a build argument, so a new Posit release invalidates the build cache and gets picked up on the next build.
+
+Dependabot keeps the GitHub Actions versions up to date.
 
 ### PR Validation
 
 Pull requests trigger:
 - Dockerfile linting (hadolint)
 - Shell script linting (shellcheck)  
-- Test build for R 4.5 (validates Dockerfile builds successfully)
+- Test builds for all R versions (4.3, 4.4, 4.5, 4.6)
 
 ## License
 

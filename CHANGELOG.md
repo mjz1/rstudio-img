@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- R 4.6 build, now the default and the `latest` tag (matrix: 4.3, 4.4, 4.5, 4.6).
+- RStudio Server is upgraded to the latest stable Posit release at build time. The rocker base images pin the RStudio version that was current when each R version was last built (e.g. the R 4.3 base shipped RStudio 2023.12.1 from Dec 2023). New `RSTUDIO_VERSION` build arg accepts a channel (`stable`, `preview`, `daily`) or an exact version (e.g. `2026.06.0+242`).
+- CI resolves the current stable RStudio Server version and passes it as a build arg, so new Posit releases bust the Docker layer cache and builds are reproducible.
+- Monthly scheduled build (1st of each month) so rolling tags pick up new RStudio Server, Quarto, and R patch releases without a manual release.
+- Dependabot configuration for GitHub Actions version updates.
+- Makefile: `build-4.6` target.
+
+### Changed
+- Default R version bumped from 4.5 to 4.6 (Dockerfile, Makefile, docker-compose).
+
+### Fixed
+- `org.opencontainers.image.source` label pointed at the wrong GitHub owner (`zatzmanm` → `mjz1`).
+
 ## [1.0.1] - 2026-01-09
 
 ### Fixed
