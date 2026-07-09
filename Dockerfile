@@ -1,4 +1,4 @@
-ARG R_VERSION=4.5
+ARG R_VERSION=4.6
 
 FROM rocker/rstudio:${R_VERSION}
 
@@ -105,6 +105,30 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     && R CMD javareconf \
     && rm -rf /var/lib/apt/lists/*
 
+# Upgrade RStudio Server beyond the version pinned in the rocker base image.
+# Rocker freezes the RStudio version at whatever was current when an R version
+# was last built (e.g. the R 4.3 base ships RStudio from Dec 2023).
+# RSTUDIO_VERSION accepts a release channel (stable, preview, daily) or an
+# exact version like 2026.06.0+242 (CI passes the resolved current version so
+# new RStudio releases invalidate the build cache).
+ARG RSTUDIO_VERSION=stable
+# hadolint ignore=DL3008
+RUN . /etc/os-release && \
+    case "${RSTUDIO_VERSION}" in \
+      stable|preview|daily) \
+        DEB_URL="https://rstudio.org/download/latest/${RSTUDIO_VERSION}/server/${UBUNTU_CODENAME}/rstudio-server-latest-amd64.deb" ;; \
+      *) \
+        # Posit only publishes jammy debs (the noble channel URL redirects to jammy)
+        if [ "${UBUNTU_CODENAME}" = "noble" ]; then UBUNTU_CODENAME="jammy"; fi && \
+        DEB_URL="https://download2.rstudio.org/server/${UBUNTU_CODENAME}/amd64/rstudio-server-${RSTUDIO_VERSION//+/-}-amd64.deb" ;; \
+    esac && \
+    curl -fsSL "${DEB_URL}" -o /tmp/rstudio-server.deb && \
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends /tmp/rstudio-server.deb && \
+    rm -f /tmp/rstudio-server.deb && \
+    rm -rf /var/lib/apt/lists/* && \
+    rstudio-server version
+
 # Update quarto to the latest release
 COPY install_quarto_latest.sh /scripts/install_quarto_latest.sh
 
@@ -132,6 +156,6 @@ RUN R -e 'update.packages(ask=F)' && \
 # Add image metadata labels
 LABEL org.opencontainers.image.title="RStudio Server with Scientific Computing Packages" \
       org.opencontainers.image.description="RStudio Server (AMD64) with comprehensive scientific computing libraries" \
-      org.opencontainers.image.source="https://github.com/zatzmanm/rstudio-img" \
+      org.opencontainers.image.source="https://github.com/mjz1/rstudio-img" \
       org.opencontainers.image.vendor="zatzmanm" \
       org.opencontainers.image.documentation="Built for AMD64. Runs via emulation on ARM64 hosts."
