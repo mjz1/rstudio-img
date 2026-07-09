@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       
       - name: Lint Dockerfile with hadolint
         uses: hadolint/hadolint-action@v3.1.0
@@ -38,7 +38,7 @@ jobs:
         r_version: ["4.3", "4.4", "4.5", "4.6"]
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Resolve latest stable RStudio Server version
         id: rstudio
