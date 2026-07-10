@@ -5,18 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-07-10
 
 ### Added
 - Posit Assistant is enabled in `/etc/rstudio/rsession.conf`. Note the two options have opposite defaults: `posit-assistant-enabled` defaults to `1` ("integration may be enabled") while `allow-posit-assistant` defaults to `0` ("use of the feature is allowed") — the latter is what actually gates it, so both are set. Requires RStudio Server >= 2026.04; the build probes `rsession` for the option and skips it on older builds, because an unrecognised option in `rsession.conf` is fatal and would leave sessions unable to start.
 - Nothing leaves the machine without user action: on first use RStudio fetches the assistant agent (~3.7 MB) from `cdn.posit.co` into `~/.posit/assistant`, and the user must sign in to Posit AI. Compute nodes therefore need outbound HTTPS to `cdn.posit.co`.
 
 ### Changed
+- CI runs a **rootless runtime smoke test** on every PR. Building an image proves it compiles, not that it runs — and all three runtime regressions listed under *Fixed* shipped behind a green build. The job exercises the image as uid 1000, the way Singularity, `podman run --user` and OpenShift use it, and asserts: no baked `secure-cookie-key`, a readable `database.conf`, `logger-type=stderr`, `xelatex` on `PATH`, both AI assistants enabled, `rserver --verify-installation` exiting 0, and Quarto rendering an actual PDF.
+- The rolling `4.x` tag rule is now guarded against `refs/heads/dev`, as `latest` already was. A `workflow_dispatch` run from `dev` would otherwise have moved the rolling tags — the ones downstream consumers actually pull — onto a dev build.
 - `docker/build-push-action` bumped v5 → v6.
 - Both workflows declare a `concurrency` group. PR validation cancels superseded runs; publishing never cancels in progress, since a half-finished run has pushed some tags to some registries and not others.
 - `hadolint` is invoked identically in both workflows (the workflow-level `ignore: DL3008` was redundant with the Dockerfile's inline suppressions, and meant PR validation could pass where publish would fail).
 - `Makefile` uses `docker compose` (v2) instead of the retired `docker-compose`.
 - `.env.example` listed R 4.3–4.5 and defaulted to 4.5; 4.6 has been the default since v1.1.0.
+- `CLAUDE.md` added, recording the failure modes specific to this repo: the images are consumed rootless via Singularity on an HPC cluster, and errors in this build have nowhere to surface.
 
 ### Removed
 - **`nvidia-cuda-dev`**, which pulled in 39 CUDA/nvidia packages totalling **4.51 GB** of the image's 9.57 GB apt footprint (`nvidia-cuda-dev` alone is 2.4 GB). It became unconditional in 1.0.0 when the ARM64 architecture conditionals were removed. Nothing used it: an `objdump -p` sweep of 665 installed R packages across two libraries found no `.so` linking `libcudart`, `libcublas`, `libcusolver`, `libcusparse`, `libcurand`, `libcufft` or `libnvrtc`, and no `torch`/`keras`/`tensorflow`. GPU support will return as a deliberate feature — see #14.
