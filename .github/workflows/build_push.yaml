@@ -84,6 +84,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         
+      # The rolling `4.x` and `latest` tags are both guarded against
+      # refs/heads/dev: a workflow_dispatch run from the dev branch would
+      # otherwise move them onto a dev build, and those are the tags downstream
+      # consumers (and our HPC sync) actually pull. Keep new rules guarded.
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v6
@@ -94,10 +98,6 @@ jobs:
           tags: |
             type=ref,event=tag
             type=raw,value=${{ github.ref_name }}-r${{ matrix.r_version }},enable=${{ github.event_name != 'schedule' }}
-            # Guarded against dev for the same reason `latest` is: a
-            # workflow_dispatch run from the dev branch would otherwise move the
-            # rolling 4.x tags onto a dev build. Those are the tags downstream
-            # consumers (and our HPC sync) actually pull.
             type=raw,value=${{ matrix.r_version }},enable=${{ github.ref != 'refs/heads/dev' }}
             type=raw,value=latest,enable=${{ matrix.r_version == env.LATEST_R_VERSION && github.ref != 'refs/heads/dev' }}
             type=raw,value=${{ matrix.r_version }}-dev,enable=${{ github.ref == 'refs/heads/dev' }}
