@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.1] - 2026-07-09
 
 ### Security
 - The RStudio Server deb's postinst generates `/var/lib/rstudio-server/secure-cookie-key`, and reinstalling the deb over the rocker base (added in 1.1.0) meant that key was baked into every published image. Since it signs RStudio auth cookies, every puller of a given tag shared the same key and could forge session cookies against any server running that image. Rocker deletes this file for exactly this reason ([rocker-versioned2#137](https://github.com/rocker-org/rocker-versioned2/issues/137)); we now do too, so it is regenerated on first run. **Affects all images published since v1.1.0.**
@@ -14,7 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rserver` failed to start under any rootless runtime (Singularity/Apptainer, `podman run --user`, OpenShift). The deb ships `/etc/rstudio/database.conf` as `0600 root:root` because it may hold a Postgres password; RStudio Server 2026.06+ treats an unreadable `database.conf` as fatal, where 2025.09 ignored it. The file is now written explicitly with no secrets in it and mode `0644`.
 - `logger-type` changed from `syslog` to `stderr`. There is no syslog socket in a container, so `rserver` startup failures were discarded entirely — the only symptom was the server never opening its port. (Rocker's `install_rstudio.sh` comments `# Log to stderr` immediately above setting `syslog`.)
 
-## [1.1.0] - 2026-07-09
+## [1.1.0] - 2026-07-09 — WITHDRAWN
+
+> **Withdrawn. Do not use.** Every image published under v1.1.0 carries a baked
+> `secure-cookie-key` (see the v1.1.1 Security note above). The `v1.1.0` and
+> `v1.1.0-r4.x` tags are being removed from Docker Hub and GHCR. The version
+> number is burned and will not be reused; use v1.1.1 or later.
+>
+> Images built from this release are still addressable by digest in both
+> registries — deleting a tag does not unpublish the manifest. If you pinned by
+> digest, re-pin. If you pulled an affected image, re-pull and discard the old
+> one; running `rserver` from it without a writable bind over
+> `/var/lib/rstudio-server` will use the shared key.
 
 ### Added
 - R 4.6 build, now the default and the `latest` tag (matrix: 4.3, 4.4, 4.5, 4.6).
