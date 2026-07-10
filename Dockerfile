@@ -101,7 +101,6 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     less \
     vim \
     libssh-dev \
-    nvidia-cuda-dev \
     && R CMD javareconf \
     && rm -rf /var/lib/apt/lists/*
 

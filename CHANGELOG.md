@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `install_quarto_latest.sh`: the download URL was matched with a greedy `https.*${ARCH}\.deb`. It works only because `_download.json` is currently pretty-printed; on a minified copy it captures a run-on string ending in `changelog.md","checks…`. Now anchored with `[^"]*`.
 - `install_quarto_latest.sh`: `dpkg -i` replaced with `apt-get install ./quarto.deb` so dependencies are resolved rather than left half-configured.
 
+### Removed
+- **`nvidia-cuda-dev`**, which pulled in 39 CUDA/nvidia packages totalling **4.51 GB** of the image's 9.57 GB apt footprint (`nvidia-cuda-dev` alone is 2.4 GB). It became unconditional in 1.0.0 when the ARM64 architecture conditionals were removed. Nothing used it: an `objdump -p` sweep of 665 installed R packages across two libraries found no `.so` linking `libcudart`, `libcublas`, `libcusolver`, `libcusparse`, `libcurand`, `libcufft` or `libnvrtc`, and no `torch`/`keras`/`tensorflow`. GPU support will return as a deliberate feature — see #14.
+
 ### Changed
 - `docker/build-push-action` bumped v5 → v6.
 - Both workflows declare a `concurrency` group. PR validation cancels superseded runs; publishing never cancels in progress, since a half-finished run has pushed some tags to some registries and not others.
