@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.0] - 2026-07-10
 
 ### Added
 - `WITH_CUDA` build arg (default `0`) that, when `1`, installs a minimal system CUDA runtime (`CUDA_RUNTIME_PACKAGES`, default `cuda-cudart-12-6`) from NVIDIA's apt repo. **Published images do not enable it** — the CI matrix is unchanged and images stay lean. It exists only for packages that dlopen the *system* CUDA runtime; the common GPU path (`torch`/`tensorflow`) bundles its own toolkit and needs only the host driver via `--nv`. GPU roadmap: #14.
