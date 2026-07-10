@@ -113,6 +113,14 @@ consequences:
   to `main` runs PR validation, which builds but does not push.
 - Tag rules in `build_push.yaml` are guarded against `refs/heads/dev` so a
   dispatch from `dev` cannot move the rolling tags. Keep new rules guarded.
+- **Every tag rule runs once per matrix entry.** Any rule not keyed on
+  `matrix.r_version` gets pushed by all four jobs, and the last to finish wins —
+  a race whose winner can differ per registry. `type=ref,event=tag` and
+  `metadata-action`'s default `flavor: latest=auto` both did this, and shipped a
+  `latest` pointing at R 4.4 in v1.2.0. `flavor: latest=false` is now set, and
+  the bare release tag is keyed on `LATEST_R_VERSION`. After any release, check
+  that `latest` and `vX.Y.Z` resolve to the same digest as `vX.Y.Z-r<LATEST>`,
+  on *both* registries.
 - A published version is never overwritten. v1.1.0 was **withdrawn** rather than
   rebuilt in place: overwriting a tag remediates nothing (the bad image is
   already in caches) while destroying the ability to tell fixed from broken.

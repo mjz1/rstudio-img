@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **`latest` and the bare release tag pointed at the wrong R version.** Every tag rule in `build_push.yaml` runs once per matrix entry, so any rule not keyed on `matrix.r_version` is pushed by all four jobs and the last to finish wins — a race whose winner can differ per registry. Two rules did this: `type=ref,event=tag` (which emits the bare `vX.Y.Z`), and `metadata-action`'s **default** `flavor: latest=auto`, which appends `latest` whenever a semver tag is built, regardless of the explicit `type=raw,value=latest` rule being correctly disabled. In v1.2.0 this left `latest` pointing at R 4.4 on GHCR and R 4.3 on Docker Hub. `flavor: latest=false` is now set and the bare release tag is keyed on `LATEST_R_VERSION`, so exactly one job emits each. The per-version tags (`vX.Y.Z-r4.6`, and the rolling `4.3`–`4.6`) were always correct and identical across registries.
+
 ## [1.2.0] - 2026-07-10
 
 ### Added
