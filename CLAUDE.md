@@ -80,8 +80,15 @@ podman run --rm --user 1000:1000 ghcr.io/mjz1/rstudio-img:4.5 <the check>   # co
 **Always run the control.** Twice during this repo's history a test "passed" for
 both the fixed and broken image because it was failing for an unrelated reason
 (a missing `libR.so`; a root-owned `--tmpfs`). A test that cannot fail proves
-nothing. CI only builds images — it does not run them — so runtime regressions
-are not caught by a green PR.
+nothing — verify a new check *fails* on an image that lacks the fix.
+
+PR validation runs a rootless **smoke test** (`pr-validation.yaml`, job `smoke`)
+that asserts the invariants above: no baked cookie key, a readable
+`database.conf`, `logger-type=stderr`, `xelatex` on `PATH`, the assistants
+enabled, `rserver --verify-installation` exiting 0 as uid 1000, and Quarto
+rendering an actual PDF. It builds one R version with `load: true` off the warm
+gha cache. Add a check here whenever you fix a runtime bug; each of those lines
+corresponds to a regression that shipped.
 
 ## Config options are not what the docs say
 
