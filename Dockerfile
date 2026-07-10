@@ -129,6 +129,27 @@ RUN . /etc/os-release && \
     rm -rf /var/lib/apt/lists/* && \
     rstudio-server version
 
+# Replay the post-install fixups from rocker's install_rstudio.sh. Reinstalling
+# the deb above re-runs its postinst, which undoes them.
+#
+# 1. The postinst generates a secure-cookie-key. Baked into a published image it
+#    becomes a shared secret: every puller gets the same key and can forge
+#    RStudio auth cookies. Rocker deletes it so it is regenerated on first run.
+#    See https://github.com/rocker-org/rocker-versioned2/issues/137
+# 2. The postinst writes database.conf 0600 root:root, since it may hold a
+#    Postgres password. RStudio Server 2026.06+ treats an unreadable
+#    database.conf as fatal (2025.09 ignored it), which breaks every rootless
+#    runtime -- Singularity/Apptainer on HPC, `podman run --user`, OpenShift.
+#    Write it explicitly with no secrets in it, so widening it leaks nothing.
+# 3. Log to stderr, not syslog. There is no syslog socket in a container, so
+#    rserver startup failures are discarded and the only symptom is the port
+#    never opening. (Rocker's script says "# Log to stderr" and then sets
+#    syslog -- the comment records the intent.)
+RUN rm -f /var/lib/rstudio-server/secure-cookie-key && \
+    printf 'provider=sqlite\ndirectory=/var/lib/rstudio-server\n' > /etc/rstudio/database.conf && \
+    chmod 0644 /etc/rstudio/database.conf && \
+    printf '[*]\nlog-level=warn\nlogger-type=stderr\n' > /etc/rstudio/logging.conf
+
 # Update quarto to the latest release
 COPY install_quarto_latest.sh /scripts/install_quarto_latest.sh
 
