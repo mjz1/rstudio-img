@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `WITH_CUDA` build arg (default `0`) that, when `1`, installs a minimal system CUDA runtime (`CUDA_RUNTIME_PACKAGES`, default `cuda-cudart-12-6`) from NVIDIA's apt repo. **Published images do not enable it** — the CI matrix is unchanged and images stay lean. It exists only for packages that dlopen the *system* CUDA runtime; the common GPU path (`torch`/`tensorflow`) bundles its own toolkit and needs only the host driver via `--nv`. GPU roadmap: #14.
 
+## [Unreleased]
+
+### Added
+- **System `libcudart` (both CUDA majors), so R torch GPU works out of the box.** `--nv` binds only the host driver (`libcuda.so`), not the CUDA runtime. R torch's `liblantern.so` links the plain soname `libcudart.so.12` and loads it from the system via `ldconfig`; PyTorch's bundled copy is hash-mangled (`libcudart-<hash>.so.12`) and invisible to it, so without a system `libcudart` `cuda_is_available()` is FALSE on a GPU node despite `nvidia-smi` working. Ships `cuda-cudart-12-9` + `cuda-cudart-13-0` (~5 MB total); a cu12x or future cu13x torch build is covered, and a newer cudart of a major is backward-compatible with all its builds. torch bundles its own cuBLAS/cuDNN, so those are not installed. This is how rocker's retired CUDA images worked (system runtime via `ldconfig`; see rocker-org/ml). CI smoke test asserts both sonames are present.
+
+### Changed
+- The `WITH_CUDA` build arg now adds the *fuller* runtime (cuBLAS/cuFFT/… via `CUDA_RUNTIME_PACKAGES`) on top of the always-present `libcudart`; it is still off by default. For the full GPU stack (TensorFlow, GPU-BLAS, RAPIDS) see issue #14.
+
 ## [1.2.1] - 2026-07-10
 
 ### Fixed

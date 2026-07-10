@@ -158,6 +158,14 @@ jobs:
             if grep -q "^copilot-enabled=1" /etc/rstudio/rsession.conf; then ok "copilot enabled"
             else bad "copilot not enabled"; fi
 
+            # v1.3.0: system libcudart (both majors) so R torch GPU works. lantern
+            # links the plain soname and loads it from ldconfig; without it,
+            # cuda_is_available() is FALSE even on a GPU node.
+            if ldconfig -p | grep -q "libcudart.so.12"; then ok "libcudart.so.12 in ldconfig"
+            else bad "libcudart.so.12 missing (R torch GPU will not load)"; fi
+            if ldconfig -p | grep -q "libcudart.so.13"; then ok "libcudart.so.13 in ldconfig"
+            else bad "libcudart.so.13 missing"; fi
+
             exit $fail'
 
       # rserver needs writable state directories. Bind host dirs owned by uid 1000

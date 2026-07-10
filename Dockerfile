@@ -104,37 +104,45 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     && R CMD javareconf \
     && rm -rf /var/lib/apt/lists/*
 
-# Optional CUDA *runtime* libraries. OFF by default, and the published images do
-# not enable it -- so this changes nothing unless you build with
-# --build-arg WITH_CUDA=1.
+# System CUDA runtime library (libcudart). Small (~5 MB) and shipped in every
+# image, because R torch needs it and the driver alone does not suffice.
 #
-# It is deliberately NOT needed for the common GPU case: Singularity's `--nv`
-# (supplied by the consumer) binds the host *driver* (libcuda.so), and R/Python
-# `torch`/`tensorflow` download a CUDA-enabled backend that bundles the toolkit
-# and load it at runtime. This layer exists only for the uncommon case of a
-# package that dlopens the *system* CUDA runtime. It is NOT `nvidia-cuda-dev`
-# (4.5 GB of headers, removed in v1.2.0 -- see issue #14).
+# What we learned (correcting an earlier assumption): --nv binds only the host
+# *driver* (libcuda.so). It does NOT provide the CUDA *runtime* (libcudart).
+# PyTorch's libtorch bundles a hash-mangled copy (libcudart-<hash>.so.12), but
+# mlverse's liblantern.so -- the R torch bridge -- links the plain soname
+# `libcudart.so.12` and loads it from the system via ldconfig. Without a system
+# libcudart, `cuda_is_available()` is FALSE on a GPU node even though nvidia-smi
+# works. This is exactly how rocker's (now retired) CUDA images worked: system
+# CUDA runtime, found via ldconfig; see rocker-org/ml.
 #
-# CUDA_RUNTIME_PACKAGES is the exact set installed; default is just cudart. Add
-# libcublas / libcufft / etc. runtime here if a package needs them. Pin to the
-# CUDA version compatible with your target driver.
+# Both current majors are installed so a cu12x torch build (needs libcudart.so.12)
+# or a future cu13x build (libcudart.so.13) is covered; a newer cudart of a major
+# is backward-compatible with all its builds, so exact minor versions do not
+# matter. torch bundles its own cuBLAS/cuDNN, so those are deliberately NOT
+# installed here -- they would be ~2 GB of weight torch never touches.
+#
+# WITH_CUDA (opt-in, still off) adds the FULLER runtime (cuBLAS, cuFFT, ...) via
+# CUDA_RUNTIME_PACKAGES, for packages that dlopen the system versions beyond
+# cudart (Python TensorFlow, nvcc-compiled code). See issue #14.
 ARG WITH_CUDA=0
-ARG CUDA_RUNTIME_PACKAGES="cuda-cudart-12-6"
+ARG CUDA_CUDART_PACKAGES="cuda-cudart-12-9 cuda-cudart-13-0"
+ARG CUDA_RUNTIME_PACKAGES=""
 # hadolint ignore=DL3008,DL4006
-RUN if [ "${WITH_CUDA}" = "1" ]; then \
-      . /etc/os-release && \
-      distro="${ID}$(echo "${VERSION_ID}" | tr -d '.')" && \
-      curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/${distro}/x86_64/cuda-keyring_1.1-1_all.deb" \
-        -o /tmp/cuda-keyring.deb && \
-      dpkg -i /tmp/cuda-keyring.deb && rm -f /tmp/cuda-keyring.deb && \
-      apt-get update -qq && \
+RUN . /etc/os-release && \
+    distro="${ID}$(echo "${VERSION_ID}" | tr -d '.')" && \
+    curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/${distro}/x86_64/cuda-keyring_1.1-1_all.deb" \
+      -o /tmp/cuda-keyring.deb && \
+    dpkg -i /tmp/cuda-keyring.deb && rm -f /tmp/cuda-keyring.deb && \
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends ${CUDA_CUDART_PACKAGES} && \
+    if [ "${WITH_CUDA}" = "1" ] && [ -n "${CUDA_RUNTIME_PACKAGES}" ]; then \
       apt-get install -y --no-install-recommends ${CUDA_RUNTIME_PACKAGES} && \
-      rm -rf /var/lib/apt/lists/* && \
-      ldconfig && \
-      echo "WITH_CUDA=1: installed ${CUDA_RUNTIME_PACKAGES}" ; \
-    else \
-      echo "WITH_CUDA=0: no system CUDA runtime (torch bundles its own; --nv provides the driver)" ; \
-    fi
+      echo "WITH_CUDA=1: also installed ${CUDA_RUNTIME_PACKAGES}" ; \
+    fi && \
+    rm -rf /var/lib/apt/lists/* && \
+    ldconfig && \
+    ldconfig -p | grep -E 'libcudart\.so\.(12|13)'
 
 # Upgrade RStudio Server beyond the version pinned in the rocker base image.
 # Rocker freezes the RStudio version at whatever was current when an R version
