@@ -91,12 +91,16 @@ jobs:
             type=raw,value=${{ matrix.r_version }}-dev,enable=${{ github.ref == 'refs/heads/dev' }}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' && matrix.r_version == env.LATEST_R_VERSION }}
         
-      - name: Build and push Docker image
+      # Build once and load the image into the local Docker daemon. Pushing is
+      # handled as a separate step so a transient registry hiccup can't corrupt
+      # the build cache mid-export (previously seen as
+      # "cache entry no longer exists" after "use of closed network connection").
+      - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64
-          push: true
+          load: true
           build-args: |
             R_VERSION=${{ matrix.r_version }}
             RSTUDIO_VERSION=${{ steps.rstudio.outputs.version }}
@@ -104,3 +108,29 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Push every tag with retries + backoff. All tags reference the same
+      # locally-built image, so both registries receive identical digests.
+      - name: Push Docker images with retry
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -u
+          fail=0
+          for tag in $TAGS; do
+            pushed=0
+            for attempt in 1 2 3 4 5; do
+              if docker push "$tag"; then
+                pushed=1
+                break
+              fi
+              wait=$((attempt * 15))
+              echo "::warning::push failed for ${tag} (attempt ${attempt}/5); retrying in ${wait}s"
+              sleep "$wait"
+            done
+            if [ "$pushed" -ne 1 ]; then
+              echo "::error::giving up on ${tag} after 5 attempts"
+              fail=1
+            fi
+          done
+          exit $fail
