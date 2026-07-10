@@ -135,3 +135,32 @@ dependency, check whether anything actually needs it:
 ```bash
 find "$R_LIBS" -name '*.so' | xargs objdump -p | grep NEEDED | grep -i <lib>
 ```
+
+## GPU / CUDA
+
+One image serves CPU and GPU; there is no `-cuda` variant and the CI matrix does
+not fork. GPU works via the host driver (`--nv` under Singularity, `--gpus` under
+Docker) plus a framework that bundles most of its own CUDA (`torch` downloads a
+CUDA-enabled backend with its own cuBLAS/cuDNN).
+
+**But the image DOES ship `libcudart`**, and this was a hard-won correction to an
+earlier "no CUDA toolkit at all" assumption. `--nv` gives only the *driver*
+(`libcuda.so`), not the CUDA *runtime*. R torch's `liblantern.so` links the plain
+soname `libcudart.so.12` and resolves it from `ldconfig`; PyTorch bundles a
+hash-mangled `libcudart-<hash>.so.12` that lantern cannot see by name. So without
+a system `libcudart`, `cuda_is_available()` is FALSE on a GPU node even though
+`nvidia-smi` works — verified the hard way. Both majors (`cuda-cudart-12-9`,
+`cuda-cudart-13-0`, ~5 MB) are installed unconditionally; the CI smoke test
+asserts both sonames. This mirrors how rocker's retired CUDA images worked
+(system runtime via `ldconfig`; see rocker-org/ml). Do not remove it thinking
+"torch is self-contained" — it is not, for R.
+
+`WITH_CUDA=1` (default off) adds the *fuller* runtime (cuBLAS/cuFFT/… via
+`CUDA_RUNTIME_PACKAGES`) on top, for packages that dlopen system versions beyond
+cudart (Python TensorFlow, nvcc code). The full GPU stack (TensorFlow, GPU-BLAS,
+RAPIDS) is scoped in issue #14. If you enable it, the driver caps the usable CUDA
+version; pin accordingly.
+
+The consumer supplies the driver and requests the device. For the OnDemand app
+(`mjz1/openondemandapps`), that is `--gres=gpu:N` plus `--nv`, with `--nv` gated
+on a runtime `/dev/nvidia*` probe — see that repo's CLAUDE.md.

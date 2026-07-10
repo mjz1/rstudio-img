@@ -169,7 +169,23 @@ not `posit-assistant-enabled`, which already defaults to `1`.
 
 ### Hardware Acceleration
 - OpenCL support
-- No CUDA. See [#14](https://github.com/mjz1/rstudio-img/issues/14) for the GPU roadmap.
+- **GPU:** one image serves both CPU and GPU. The host *driver* is exposed by the
+  runtime (`singularity exec --nv`, `docker --gpus`); the CUDA *toolkit* is not in
+  the image — `torch` downloads a CUDA-enabled backend into the package library
+  and bundles its own cuBLAS/cuDNN.
+  - The image **does** ship system **`libcudart`** (both CUDA majors, ~5 MB).
+    R torch's `liblantern.so` links the plain soname `libcudart.so.12` and loads
+    it from `ldconfig`; PyTorch's bundled copy is hash-mangled and invisible to
+    it, so without this `cuda_is_available()` is FALSE on a GPU node. This is the
+    minimum that makes R torch GPU work, and it is how rocker's retired CUDA
+    images worked (system runtime via `ldconfig`; see rocker-org/ml).
+  - `WITH_CUDA=1` adds the *fuller* runtime (cuBLAS/cuFFT/… via
+    `CUDA_RUNTIME_PACKAGES`) for packages that dlopen system versions beyond
+    cudart. Off by default.
+  - Not yet covered by a single image: Python TensorFlow/keras (needs a Python
+    GPU env), GPU-accelerated BLAS (NVBLAS), RAPIDS/cuML. GPU roadmap:
+    [#14](https://github.com/mjz1/rstudio-img/issues/14). `nvidia-cuda-dev`
+    (4.5 GB of headers) was removed in v1.2.0.
 
 ### GIS and Spatial Analysis
 - GDAL, PROJ, GEOS
