@@ -176,6 +176,11 @@ RUN chmod +x /scripts/install_quarto_latest.sh && \
 #     cmd && break || echo ... && sleep 5
 # left the RUN's exit status as sleep's, so three failed installs produced a
 # green build and an image with no TeX at all.
+#
+# SC2088: the tildes below are deliberately literal. kpathsea expands them at
+# runtime, per user; letting the shell expand them at build time would hardcode
+# root's home into every user's TeX configuration.
+# hadolint ignore=SC2088
 RUN for attempt in 1 2 3; do \
       echo "Attempt ${attempt}: installing TinyTeX..."; \
       if quarto install tool tinytex; then break; fi; \
