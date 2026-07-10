@@ -104,6 +104,38 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     && R CMD javareconf \
     && rm -rf /var/lib/apt/lists/*
 
+# Optional CUDA *runtime* libraries. OFF by default, and the published images do
+# not enable it -- so this changes nothing unless you build with
+# --build-arg WITH_CUDA=1.
+#
+# It is deliberately NOT needed for the common GPU case: Singularity's `--nv`
+# (supplied by the consumer) binds the host *driver* (libcuda.so), and R/Python
+# `torch`/`tensorflow` download a CUDA-enabled backend that bundles the toolkit
+# and load it at runtime. This layer exists only for the uncommon case of a
+# package that dlopens the *system* CUDA runtime. It is NOT `nvidia-cuda-dev`
+# (4.5 GB of headers, removed in v1.2.0 -- see issue #14).
+#
+# CUDA_RUNTIME_PACKAGES is the exact set installed; default is just cudart. Add
+# libcublas / libcufft / etc. runtime here if a package needs them. Pin to the
+# CUDA version compatible with your target driver.
+ARG WITH_CUDA=0
+ARG CUDA_RUNTIME_PACKAGES="cuda-cudart-12-6"
+# hadolint ignore=DL3008,DL4006
+RUN if [ "${WITH_CUDA}" = "1" ]; then \
+      . /etc/os-release && \
+      distro="${ID}$(echo "${VERSION_ID}" | tr -d '.')" && \
+      curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/${distro}/x86_64/cuda-keyring_1.1-1_all.deb" \
+        -o /tmp/cuda-keyring.deb && \
+      dpkg -i /tmp/cuda-keyring.deb && rm -f /tmp/cuda-keyring.deb && \
+      apt-get update -qq && \
+      apt-get install -y --no-install-recommends ${CUDA_RUNTIME_PACKAGES} && \
+      rm -rf /var/lib/apt/lists/* && \
+      ldconfig && \
+      echo "WITH_CUDA=1: installed ${CUDA_RUNTIME_PACKAGES}" ; \
+    else \
+      echo "WITH_CUDA=0: no system CUDA runtime (torch bundles its own; --nv provides the driver)" ; \
+    fi
+
 # Upgrade RStudio Server beyond the version pinned in the rocker base image.
 # Rocker freezes the RStudio version at whatever was current when an R version
 # was last built (e.g. the R 4.3 base ships RStudio from Dec 2023).

@@ -169,7 +169,18 @@ not `posit-assistant-enabled`, which already defaults to `1`.
 
 ### Hardware Acceleration
 - OpenCL support
-- No CUDA. See [#14](https://github.com/mjz1/rstudio-img/issues/14) for the GPU roadmap.
+- **GPU:** the image ships **no CUDA toolkit by design.** GPU works via the host
+  *driver* — exposed by the runtime (`singularity exec --nv`, `docker
+  --gpus`) — plus a framework that brings its own CUDA. R/Python `torch` and
+  `tensorflow` download a CUDA-enabled backend into the package library and load
+  it at runtime; nothing CUDA-specific is needed in the image. This is why a
+  single image serves both CPU and GPU.
+  - For the uncommon case of a package that dlopens the *system* CUDA runtime,
+    build with `--build-arg WITH_CUDA=1` (installs a minimal `libcudart`; tune
+    the set with `--build-arg CUDA_RUNTIME_PACKAGES="…"`). Off by default; the
+    published images do not enable it.
+  - `nvidia-cuda-dev` (4.5 GB of headers) was removed in v1.2.0. GPU roadmap:
+    [#14](https://github.com/mjz1/rstudio-img/issues/14).
 
 ### GIS and Spatial Analysis
 - GDAL, PROJ, GEOS

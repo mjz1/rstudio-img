@@ -135,3 +135,23 @@ dependency, check whether anything actually needs it:
 ```bash
 find "$R_LIBS" -name '*.so' | xargs objdump -p | grep NEEDED | grep -i <lib>
 ```
+
+## GPU / CUDA
+
+The image ships **no CUDA toolkit**, on purpose. GPU works via the host driver
+(`--nv` under Singularity, `--gpus` under Docker) plus a framework that bundles
+its own CUDA — `torch`/`tensorflow` download a CUDA-enabled backend at runtime.
+So one image serves CPU and GPU; there is no `-cuda` variant and the CI matrix
+does not fork.
+
+`WITH_CUDA` (build arg, default `0`) is a hook for the uncommon package that
+dlopens the *system* CUDA runtime: it adds NVIDIA's apt repo and installs
+`CUDA_RUNTIME_PACKAGES` (default just `cuda-cudart-12-6`). **CI does not set it**,
+so published images stay lean — flipping it on, or adding a `-cuda` tag, is the
+deferred Tier-2 decision in issue #14. If you do enable it, the driver on the
+target host caps the usable CUDA version; pin `CUDA_RUNTIME_PACKAGES`
+accordingly.
+
+The consumer supplies the driver and requests the device. For the OnDemand app
+(`mjz1/openondemandapps`), that is `--gres=gpu:N` plus `--nv`, with `--nv` gated
+on a runtime `/dev/nvidia*` probe — see that repo's CLAUDE.md.
