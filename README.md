@@ -150,12 +150,26 @@ docker build --build-arg R_VERSION=4.6 --build-arg RSTUDIO_VERSION=2026.06.0+242
 
 ### Document Publishing
 - Quarto (latest version)
-- TinyTeX (LaTeX distribution)
+- TinyTeX (LaTeX distribution), installed to `/opt/TinyTeX` and on `PATH` for all users
 - Pandoc
 
+### AI Assistants
+Both are enabled in `/etc/rstudio/rsession.conf` and require the user to sign in
+before anything is sent anywhere.
+
+- **GitHub Copilot** (`copilot-enabled=1`)
+- **Posit Assistant** (`posit-assistant-enabled=1`, `allow-posit-assistant=1`),
+  requires RStudio Server ≥ 2026.04. On first use RStudio downloads the assistant
+  agent (~3.7 MB) from `cdn.posit.co` into `~/.posit/assistant`, so the machine
+  running the session needs outbound HTTPS to that host.
+
+To disable Posit Assistant for all users of a derived image, set
+`allow-posit-assistant=0` — that is the option which actually gates the feature,
+not `posit-assistant-enabled`, which already defaults to `1`.
+
 ### Hardware Acceleration
-- CUDA development tools
 - OpenCL support
+- No CUDA. See [#14](https://github.com/mjz1/rstudio-img/issues/14) for the GPU roadmap.
 
 ### GIS and Spatial Analysis
 - GDAL, PROJ, GEOS
@@ -170,7 +184,7 @@ See the [Dockerfile](Dockerfile) for the complete list of installed packages.
 
 ## Architecture Support
 
-Images are built for `linux/amd64` (Intel/AMD 64-bit) with full support for all packages including CUDA and TinyTeX.
+Images are built for `linux/amd64` (Intel/AMD 64-bit).
 
 ### Running on ARM64 (Apple Silicon)
 
