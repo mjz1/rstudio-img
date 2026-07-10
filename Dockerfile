@@ -101,7 +101,6 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     less \
     vim \
     libssh-dev \
-    nvidia-cuda-dev \
     && R CMD javareconf \
     && rm -rf /var/lib/apt/lists/*
 
@@ -156,13 +155,52 @@ COPY install_quarto_latest.sh /scripts/install_quarto_latest.sh
 RUN chmod +x /scripts/install_quarto_latest.sh && \
     /scripts/install_quarto_latest.sh
 
-# Setup tinytex with retry logic
-RUN for attempt in {1..3}; do \
-      echo "Attempt $attempt: Installing TinyTeX..." && \
-      quarto install tool tinytex && break || \
-      echo "Attempt $attempt failed, retrying in 5 seconds..." && \
+# Install TinyTeX, then move it somewhere every user can actually read.
+#
+# `quarto install tool tinytex` installs into $HOME/.TinyTeX, and the build runs
+# as root -- so it lands in /root/.TinyTeX, and /root is mode 0700. Under Docker
+# as root that happens to work. Under Singularity/Apptainer, `podman run --user`,
+# or even rocker's own `rstudio` user, those 436 MB of TeX are unreachable: no
+# xelatex on PATH, and `format: pdf` fails.
+#
+# `tlmgr path add` symlinks the binaries somewhere on PATH -- but TinyTeX ships
+# with no `sys_bin` recorded in its tlpdb, so `path add` alone exits 0 having
+# linked nothing. Set sys_bin first, or this silently does not work.
+#
+# TinyTeX also points TEXMFVAR/TEXMFCONFIG inside its own tree. Once that tree is
+# read-only -- and under Singularity the whole SIF is read-only regardless of
+# permissions -- luaotfload cannot build its font cache and compilation dies with
+# "luaotfload | load : FATAL ERROR". Redirect the variable trees into $HOME.
+#
+# The retry loop must fail the build when every attempt fails. The previous form
+#     cmd && break || echo ... && sleep 5
+# left the RUN's exit status as sleep's, so three failed installs produced a
+# green build and an image with no TeX at all.
+#
+# SC2088: the tildes below are deliberately literal. kpathsea expands them at
+# runtime, per user; letting the shell expand them at build time would hardcode
+# root's home into every user's TeX configuration.
+# hadolint ignore=SC2088
+RUN for attempt in 1 2 3; do \
+      echo "Attempt ${attempt}: installing TinyTeX..."; \
+      if quarto install tool tinytex; then break; fi; \
+      if [ "${attempt}" -eq 3 ]; then \
+        echo "TinyTeX installation failed after 3 attempts" >&2; \
+        exit 1; \
+      fi; \
+      echo "Attempt ${attempt} failed, retrying in 5 seconds..."; \
       sleep 5; \
-    done
+    done && \
+    mv /root/.TinyTeX /opt/TinyTeX && \
+    TLMGR=$(echo /opt/TinyTeX/bin/*/tlmgr) && \
+    "${TLMGR}" option sys_bin /usr/local/bin && \
+    "${TLMGR}" path add && \
+    "${TLMGR}" conf texmf TEXMFHOME '~/texmf' && \
+    "${TLMGR}" conf texmf TEXMFVAR '~/.texlive/texmf-var' && \
+    "${TLMGR}" conf texmf TEXMFCONFIG '~/.texlive/texmf-config' && \
+    chmod -R a+rX /opt/TinyTeX && \
+    command -v xelatex && \
+    xelatex --version | head -1
 
 # Setup git-lfs
 # hadolint ignore=DL3008
