@@ -150,12 +150,12 @@ docker build --build-arg R_VERSION=4.6 --build-arg RSTUDIO_VERSION=2026.06.0+242
 
 ### Document Publishing
 - Quarto (latest version)
-- TinyTeX (LaTeX distribution)
+- TinyTeX (LaTeX distribution), installed to `/opt/TinyTeX` and on `PATH` for all users
 - Pandoc
 
 ### Hardware Acceleration
-- CUDA development tools
 - OpenCL support
+- No CUDA. See [#14](https://github.com/mjz1/rstudio-img/issues/14) for the GPU roadmap.
 
 ### GIS and Spatial Analysis
 - GDAL, PROJ, GEOS
@@ -170,7 +170,7 @@ See the [Dockerfile](Dockerfile) for the complete list of installed packages.
 
 ## Architecture Support
 
-Images are built for `linux/amd64` (Intel/AMD 64-bit) with full support for all packages including CUDA and TinyTeX.
+Images are built for `linux/amd64` (Intel/AMD 64-bit).
 
 ### Running on ARM64 (Apple Silicon)
 
