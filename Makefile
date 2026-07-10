@@ -28,17 +28,17 @@ help:
 
 # Docker Compose commands
 up:
-	docker-compose up -d
+	docker compose up -d
 	@echo "RStudio Server available at http://localhost:8787"
 
 down:
-	docker-compose down
+	docker compose down
 
 restart:
-	docker-compose restart
+	docker compose restart
 
 logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 # Build commands
 build:
@@ -78,6 +78,6 @@ pr-validate:
 
 # Cleanup
 clean:
-	docker-compose down -v
+	docker compose down -v
 	docker rmi rstudio-local:4.3 rstudio-local:4.4 rstudio-local:4.5 rstudio-local:4.6 2>/dev/null || true
 	@echo "Cleanup complete"

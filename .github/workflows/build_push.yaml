@@ -12,6 +12,12 @@ on:
 env:
   LATEST_R_VERSION: '4.6'
 
+# Serialise publishes, but never cancel one: a run killed partway through has
+# pushed some tags to some registries and not others.
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write
@@ -24,12 +30,14 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v7
       
+      # DL3008 is suppressed inline in the Dockerfile where it applies, so the
+      # workflow-level ignore is redundant. Keeping the two lint invocations
+      # identical means PR validation cannot pass where publish would fail.
       - name: Lint Dockerfile with hadolint
         uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile
           failure-threshold: warning
-          ignore: DL3008
       
       - name: Lint shell scripts with shellcheck
         run: |
@@ -96,7 +104,7 @@ jobs:
       # the build cache mid-export (previously seen as
       # "cache entry no longer exists" after "use of closed network connection").
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
