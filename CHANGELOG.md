@@ -35,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.1] - 2026-07-09
 
+> **Docker Hub tags for this release no longer exist**, having been removed
+> alongside the withdrawn v1.1.0 tags. The images are intact on GHCR
+> (`ghcr.io/mjz1/rstudio-img:v1.1.1`, `:v1.1.1-r4.x`). They are deliberately not
+> re-pushed to Docker Hub: a rebuild would produce different digests from the
+> GHCR copies, leaving the two registries disagreeing about what `v1.1.1` is.
+> Use v1.2.0 or later, or pull v1.1.1 from GHCR.
+
 ### Security
 - The RStudio Server deb's postinst generates `/var/lib/rstudio-server/secure-cookie-key`, and reinstalling the deb over the rocker base (added in 1.1.0) meant that key was baked into every published image. Since it signs RStudio auth cookies, every puller of a given tag shared the same key and could forge session cookies against any server running that image. Rocker deletes this file for exactly this reason ([rocker-versioned2#137](https://github.com/rocker-org/rocker-versioned2/issues/137)); we now do too, so it is regenerated on first run. **Affects all images published since v1.1.0.**
 
