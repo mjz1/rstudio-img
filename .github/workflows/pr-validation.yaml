@@ -74,3 +74,116 @@ jobs:
           tags: rstudio-pr-validate:${{ matrix.r_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Building an image proves it compiles. It does not prove it runs, and every
+  # serious bug this repo has shipped was a runtime failure behind a green build:
+  # an unreadable database.conf, a baked secure-cookie-key, TinyTeX installed
+  # into a 0700 /root. Each of those is caught below, in seconds.
+  #
+  # The image is exercised ROOTLESS (uid 1000, rocker's `rstudio` user), because
+  # that is how it is actually used -- Singularity on HPC, `podman run --user`,
+  # OpenShift. Running as root would pass while the real deployment breaks.
+  smoke:
+    # The `env` context is not available in a job's `name`, so this is literal.
+    name: Runtime smoke test (R 4.6, rootless)
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      SMOKE_R_VERSION: '4.6'
+      IMAGE: rstudio-smoke:test
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v7
+
+      - name: Resolve latest stable RStudio Server version
+        id: rstudio
+        run: |
+          effective_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            "https://rstudio.org/download/latest/stable/server/jammy/rstudio-server-latest-amd64.deb")
+          filename=$(basename "$effective_url")
+          version=${filename#rstudio-server-}
+          version=${version%-amd64.deb}
+          version=${version/-/+}
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # `load: true` is the point: the image must exist in the daemon to be run.
+      # The gha cache is already warm from the build job, so this is cheap.
+      - name: Build image for testing
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          build-args: |
+            R_VERSION=${{ env.SMOKE_R_VERSION }}
+            RSTUDIO_VERSION=${{ steps.rstudio.outputs.version }}
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha
+
+      # No bind mounts here: mounting over /var/lib/rstudio-server would mask the
+      # very file we are asserting does not exist.
+      - name: Image invariants (rootless, unmounted)
+        run: |
+          docker run --rm --user 1000:1000 "$IMAGE" bash -c '
+            fail=0
+            ok()  { printf "  ok    %s\n" "$1"; }
+            bad() { printf "  FAIL  %s\n" "$1"; fail=1; }
+
+            # v1.1.1: a baked key signs auth cookies for everyone who pulls the tag.
+            if [ -e /var/lib/rstudio-server/secure-cookie-key ]; then
+              bad "secure-cookie-key is baked into the image"
+            else ok "no baked secure-cookie-key"; fi
+
+            # v1.1.1: RStudio >= 2026.06 treats an unreadable database.conf as fatal.
+            if [ -r /etc/rstudio/database.conf ]; then ok "database.conf is readable"
+            else bad "database.conf unreadable by a non-root user"; fi
+
+            # v1.1.1: there is no syslog socket in a container; errors vanish.
+            if grep -q logger-type=stderr /etc/rstudio/logging.conf; then ok "rserver logs to stderr"
+            else bad "rserver logging is not stderr"; fi
+
+            # v1.2.0: TinyTeX used to be unreachable inside a 0700 /root.
+            if command -v xelatex >/dev/null; then ok "xelatex on PATH"
+            else bad "xelatex not on PATH (TinyTeX unreachable?)"; fi
+            if command -v tlmgr >/dev/null; then ok "tlmgr on PATH"
+            else bad "tlmgr not on PATH"; fi
+
+            # v1.2.0: allow-posit-assistant is the option that actually gates it.
+            if grep -q "^allow-posit-assistant=1" /etc/rstudio/rsession.conf; then ok "posit assistant enabled"
+            else bad "posit assistant not enabled"; fi
+            if grep -q "^copilot-enabled=1" /etc/rstudio/rsession.conf; then ok "copilot enabled"
+            else bad "copilot not enabled"; fi
+
+            exit $fail'
+
+      # rserver needs writable state directories. Bind host dirs owned by uid 1000
+      # rather than --tmpfs: a tmpfs is root-owned and rserver fails to chmod its
+      # sqlite database inside it, which looks like a real failure but is not.
+      - name: rserver starts rootless
+        run: |
+          mkdir -p /tmp/rs/lib /tmp/rs/run
+          sudo chown -R 1000:1000 /tmp/rs
+          docker run --rm --user 1000:1000 \
+            -v /tmp/rs/lib:/var/lib/rstudio-server \
+            -v /tmp/rs/run:/run \
+            "$IMAGE" rserver --verify-installation=1 --server-user=rstudio
+          echo "  ok    rserver --verify-installation exits 0 as uid 1000"
+
+      # End-to-end: this is what a user means by "PDF output works". It failed in
+      # every image published before v1.2.0.
+      #
+      # `docker run --user` does not set HOME, so it defaults to `/`, which is not
+      # writable. Quarto's cache and TinyTeX's TEXMFVAR both resolve under $HOME.
+      - name: Quarto renders a PDF
+        run: |
+          docker run --rm --user 1000:1000 \
+            -e HOME=/home/rstudio -e XDG_CACHE_HOME=/home/rstudio/.cache \
+            -w /home/rstudio "$IMAGE" bash -euc '
+            printf -- "---\ntitle: smoke\nformat: pdf\n---\n\nHello.\n" > t.qmd
+            quarto render t.qmd --to pdf
+            test -s t.pdf
+            echo "  ok    rendered $(stat -c%s t.pdf) byte PDF"'
