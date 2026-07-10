@@ -42,14 +42,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-07-09 — WITHDRAWN
 
 > **Withdrawn. Do not use.** Every image published under v1.1.0 carries a baked
-> `secure-cookie-key` (see the v1.1.1 Security note above). The `v1.1.0` and
-> `v1.1.0-r4.x` tags are being removed from Docker Hub and GHCR. The version
-> number is burned and will not be reused; use v1.1.1 or later.
+> `secure-cookie-key` (see the v1.1.1 Security note above). The version number is
+> burned and will not be reused; use v1.1.1 or later.
 >
-> Images built from this release are still addressable by digest in both
-> registries — deleting a tag does not unpublish the manifest. If you pinned by
-> digest, re-pin. If you pulled an affected image, re-pull and discard the old
-> one; running `rserver` from it without a writable bind over
+> **GHCR** (`ghcr.io/mjz1/rstudio-img`): the `v1.1.0` and `v1.1.0-r4.x` package
+> versions are deleted. Deleting the version rather than only the tag removes the
+> manifest itself — those digests now 404, and the images are gone.
+>
+> **Docker Hub** (`zatzmanm/rstudio`): the same five tags are removed, but
+> deleting a tag there does not unpublish the manifest. Images built from this
+> release remain addressable by digest.
+>
+> If you pinned by digest, re-pin. If you pulled an affected image, re-pull and
+> discard the old one; running `rserver` from it without a writable bind over
 > `/var/lib/rstudio-server` will use the shared key.
 
 ### Added
