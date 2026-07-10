@@ -208,9 +208,30 @@ RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.d
     apt-get install -y --no-install-recommends git-lfs && \
     rm -rf /var/lib/apt/lists/*
 
-# Update R packages and enable copilot
+# Update R packages, and enable the in-IDE AI assistants.
+#
+# The two Posit Assistant options have opposite defaults, so the one that reads
+# like the switch is not the one that gates the feature:
+#
+#   posit-assistant-enabled  default 1   integration *may* be enabled
+#   allow-posit-assistant    default 0   use of the feature is *allowed*  <-- gate
+#
+# Neither sends anything anywhere on its own: the assistant fetches its agent
+# from cdn.posit.co on first use and requires the user to sign in to Posit AI.
+#
+# rsession treats an unrecognised option in rsession.conf as fatal, and Posit
+# Assistant only exists in RStudio Server >= 2026.04. Probe the binary for the
+# option rather than assume, so a build pinned to an older RSTUDIO_VERSION still
+# produces a working image instead of one whose sessions refuse to start.
 RUN R -e 'update.packages(ask=F)' && \
-    echo 'copilot-enabled=1' >> /etc/rstudio/rsession.conf
+    echo 'copilot-enabled=1' >> /etc/rstudio/rsession.conf && \
+    if grep -aq 'allow-posit-assistant' /usr/lib/rstudio-server/bin/rsession; then \
+      printf 'posit-assistant-enabled=1\nallow-posit-assistant=1\n' >> /etc/rstudio/rsession.conf && \
+      echo "Posit Assistant: enabled"; \
+    else \
+      echo "Posit Assistant: unsupported by this RStudio Server build, skipping"; \
+    fi && \
+    cat /etc/rstudio/rsession.conf
 
 # Add image metadata labels
 LABEL org.opencontainers.image.title="RStudio Server with Scientific Computing Packages" \

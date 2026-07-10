@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Posit Assistant is enabled in `/etc/rstudio/rsession.conf`. Note the two options have opposite defaults: `posit-assistant-enabled` defaults to `1` ("integration may be enabled") while `allow-posit-assistant` defaults to `0` ("use of the feature is allowed") — the latter is what actually gates it, so both are set. Requires RStudio Server >= 2026.04; the build probes `rsession` for the option and skips it on older builds, because an unrecognised option in `rsession.conf` is fatal and would leave sessions unable to start.
+- Nothing leaves the machine without user action: on first use RStudio fetches the assistant agent (~3.7 MB) from `cdn.posit.co` into `~/.posit/assistant`, and the user must sign in to Posit AI. Compute nodes therefore need outbound HTTPS to `cdn.posit.co`.
+
+### Changed
+- `docker/build-push-action` bumped v5 → v6.
+- Both workflows declare a `concurrency` group. PR validation cancels superseded runs; publishing never cancels in progress, since a half-finished run has pushed some tags to some registries and not others.
+- `hadolint` is invoked identically in both workflows (the workflow-level `ignore: DL3008` was redundant with the Dockerfile's inline suppressions, and meant PR validation could pass where publish would fail).
+- `Makefile` uses `docker compose` (v2) instead of the retired `docker-compose`.
+- `.env.example` listed R 4.3–4.5 and defaulted to 4.5; 4.6 has been the default since v1.1.0.
+
+### Removed
+- **`nvidia-cuda-dev`**, which pulled in 39 CUDA/nvidia packages totalling **4.51 GB** of the image's 9.57 GB apt footprint (`nvidia-cuda-dev` alone is 2.4 GB). It became unconditional in 1.0.0 when the ARM64 architecture conditionals were removed. Nothing used it: an `objdump -p` sweep of 665 installed R packages across two libraries found no `.so` linking `libcudart`, `libcublas`, `libcusolver`, `libcusparse`, `libcurand`, `libcufft` or `libnvrtc`, and no `torch`/`keras`/`tensorflow`. GPU support will return as a deliberate feature — see #14.
+
 ### Fixed
 - **PDF rendering was broken in every published image.** `quarto install tool tinytex` installs into `$HOME/.TinyTeX`, and the build runs as root, so 436 MB of TeX landed in `/root/.TinyTeX` — mode `0700`. It worked under Docker-as-root and was unreachable for every other user: no `xelatex` on `PATH`, and `format: pdf` failed. TinyTeX now lives in `/opt/TinyTeX`, readable by all.
   - `tlmgr path add` alone was not enough: TinyTeX records no `sys_bin` in its tlpdb, so it exits 0 having linked nothing. `sys_bin` is now set first.
@@ -15,16 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `install_quarto_latest.sh`: the "failed to determine download URL" error was unreachable. `set -e` aborts on the failed command substitution above it, so the script died before the check could run.
 - `install_quarto_latest.sh`: the download URL was matched with a greedy `https.*${ARCH}\.deb`. It works only because `_download.json` is currently pretty-printed; on a minified copy it captures a run-on string ending in `changelog.md","checks…`. Now anchored with `[^"]*`.
 - `install_quarto_latest.sh`: `dpkg -i` replaced with `apt-get install ./quarto.deb` so dependencies are resolved rather than left half-configured.
-
-### Removed
-- **`nvidia-cuda-dev`**, which pulled in 39 CUDA/nvidia packages totalling **4.51 GB** of the image's 9.57 GB apt footprint (`nvidia-cuda-dev` alone is 2.4 GB). It became unconditional in 1.0.0 when the ARM64 architecture conditionals were removed. Nothing used it: an `objdump -p` sweep of 665 installed R packages across two libraries found no `.so` linking `libcudart`, `libcublas`, `libcusolver`, `libcusparse`, `libcurand`, `libcufft` or `libnvrtc`, and no `torch`/`keras`/`tensorflow`. GPU support will return as a deliberate feature — see #14.
-
-### Changed
-- `docker/build-push-action` bumped v5 → v6.
-- Both workflows declare a `concurrency` group. PR validation cancels superseded runs; publishing never cancels in progress, since a half-finished run has pushed some tags to some registries and not others.
-- `hadolint` is invoked identically in both workflows (the workflow-level `ignore: DL3008` was redundant with the Dockerfile's inline suppressions, and meant PR validation could pass where publish would fail).
-- `Makefile` uses `docker compose` (v2) instead of the retired `docker-compose`.
-- `.env.example` listed R 4.3–4.5 and defaulted to 4.5; 4.6 has been the default since v1.1.0.
 
 ## [1.1.1] - 2026-07-09
 
