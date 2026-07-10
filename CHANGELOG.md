@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Posit Assistant is enabled in `/etc/rstudio/rsession.conf`. Note the two options have opposite defaults: `posit-assistant-enabled` defaults to `1` ("integration may be enabled") while `allow-posit-assistant` defaults to `0` ("use of the feature is allowed") — the latter is what actually gates it, so both are set. Requires RStudio Server >= 2026.04; the build probes `rsession` for the option and skips it on older builds, because an unrecognised option in `rsession.conf` is fatal and would leave sessions unable to start.
+- Nothing leaves the machine without user action: on first use RStudio fetches the assistant agent (~3.7 MB) from `cdn.posit.co` into `~/.posit/assistant`, and the user must sign in to Posit AI. Compute nodes therefore need outbound HTTPS to `cdn.posit.co`.
+
 ## [1.1.1] - 2026-07-09
 
 ### Security
