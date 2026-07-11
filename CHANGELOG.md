@@ -5,19 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-07-10
+
+### Fixed
+- **HTML→image/PDF rendering was broken: `gt::gtsave("*.png")`, `webshot2`, and `pagedown::chrome_print()` failed with _"`google-chrome` and `chromium-browser` were not found"_ (issue #1).** They all drive Chrome through `chromote`, and the image shipped no Chromium-based browser. Now installs Google Chrome's own `.deb` — Ubuntu's apt `chromium` is a *snap*, which does not run inside a container. Because the primary runtime is rootless (Singularity), where Chrome's sandbox cannot initialise (no setuid helper, no nested user namespaces), `CHROMOTE_CHROME` points at a wrapper that always launches Chrome with `--no-sandbox --disable-gpu --disable-dev-shm-usage`, and every `chromote`-based package inherits it. The build fails if `google-chrome --version` does not run, and the CI smoke test renders a PNG headless as uid 1000.
+
 ## [1.3.0] - 2026-07-10
 
 ### Added
-- `WITH_CUDA` build arg (default `0`) that, when `1`, installs a minimal system CUDA runtime (`CUDA_RUNTIME_PACKAGES`, default `cuda-cudart-12-6`) from NVIDIA's apt repo. **Published images do not enable it** — the CI matrix is unchanged and images stay lean. It exists only for packages that dlopen the *system* CUDA runtime; the common GPU path (`torch`/`tensorflow`) bundles its own toolkit and needs only the host driver via `--nv`. GPU roadmap: #14.
-
-## [Unreleased]
-
-### Added
-- **Headless Google Chrome, for R packages that render HTML to image/PDF through `chromote`** — `webshot2`, `gt::gtsave("*.png")`, `pagedown::chrome_print()`. Issue #1: `gt` could not save a PNG because the image shipped no Chromium-based browser. Ubuntu's apt `chromium` is a *snap* that does not run in a container, so Google Chrome's own `.deb` is installed. Because the primary runtime is rootless (Singularity), where Chrome's sandbox cannot initialise, `CHROMOTE_CHROME` points at a wrapper that always launches with `--no-sandbox --disable-gpu --disable-dev-shm-usage`, and every `chromote`-based package inherits it. The CI smoke test renders a PNG headless as uid 1000.
 - **System `libcudart` (both CUDA majors), so R torch GPU works out of the box.** `--nv` binds only the host driver (`libcuda.so`), not the CUDA runtime. R torch's `liblantern.so` links the plain soname `libcudart.so.12` and loads it from the system via `ldconfig`; PyTorch's bundled copy is hash-mangled (`libcudart-<hash>.so.12`) and invisible to it, so without a system `libcudart` `cuda_is_available()` is FALSE on a GPU node despite `nvidia-smi` working. Ships `cuda-cudart-12-9` + `cuda-cudart-13-0` (~5 MB total); a cu12x or future cu13x torch build is covered, and a newer cudart of a major is backward-compatible with all its builds. torch bundles its own cuBLAS/cuDNN, so those are not installed. This is how rocker's retired CUDA images worked (system runtime via `ldconfig`; see rocker-org/ml). CI smoke test asserts both sonames are present.
-
-### Changed
-- The `WITH_CUDA` build arg now adds the *fuller* runtime (cuBLAS/cuFFT/… via `CUDA_RUNTIME_PACKAGES`) on top of the always-present `libcudart`; it is still off by default. For the full GPU stack (TensorFlow, GPU-BLAS, RAPIDS) see issue #14.
+- `WITH_CUDA` build arg (default `0`) that, when `1`, installs the *fuller* system CUDA runtime (`CUDA_RUNTIME_PACKAGES`: cuBLAS/cuFFT/… from NVIDIA's apt repo) on top of the always-present `libcudart`. **Published images do not enable it** — the CI matrix is unchanged and images stay lean. It exists only for packages that dlopen system CUDA beyond cudart (Python TensorFlow, `nvcc` code); the common GPU path (`torch`) bundles its own toolkit and needs only the host driver via `--nv`. Full GPU stack (TensorFlow, GPU-BLAS, RAPIDS): #14.
 
 ## [1.2.1] - 2026-07-10
 
