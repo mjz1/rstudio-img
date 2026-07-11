@@ -164,3 +164,30 @@ version; pin accordingly.
 The consumer supplies the driver and requests the device. For the OnDemand app
 (`mjz1/openondemandapps`), that is `--gres=gpu:N` plus `--nv`, with `--nv` gated
 on a runtime `/dev/nvidia*` probe — see that repo's CLAUDE.md.
+
+## Headless Chrome
+
+The image ships **Google Chrome** so R packages that rasterise HTML can work:
+`webshot2`, `gt::gtsave("*.png")`, `pagedown::chrome_print()` — all drive Chrome
+through `chromote`. Issue #1 was `gt` failing to save a PNG because no browser
+was present. Two things here are not obvious from the Dockerfile:
+
+- **Do not use Ubuntu's apt `chromium`/`chromium-browser`.** On noble it is a
+  transitional *snap*; snaps do not run inside a container, so it "installs" and
+  then fails at runtime. Google Chrome's own `.deb` is a real binary and pulls
+  its runtime deps (`libnss3`, fonts, …) via apt.
+- **Rootless breaks Chrome's sandbox, so it must run `--no-sandbox`.** The
+  sandbox needs a setuid helper or nested user namespaces; under Singularity
+  neither exists, so Chrome cannot spawn its zygote and dies. `chromote` only
+  adds `--no-sandbox` automatically when `uid == 0`, which never holds here. So
+  `CHROMOTE_CHROME` is set to `/usr/local/bin/chrome-headless-shim`, a wrapper
+  that always execs Chrome with `--no-sandbox --disable-gpu
+  --disable-dev-shm-usage` (the last because `/dev/shm` is tiny in a container
+  and Chrome crashes writing there). Every `chromote`-based package reads
+  `CHROMOTE_CHROME`, so pointing it at the wrapper fixes all of them at once. If
+  you ever bypass the wrapper (calling `google-chrome` directly), you own the
+  flags.
+
+The smoke test renders a data-URI screenshot as uid 1000 — a real rootless
+render, not just "the binary exists," because a present-but-unusable Chrome is
+exactly the silent failure this repo keeps shipping.

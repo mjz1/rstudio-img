@@ -248,6 +248,41 @@ RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.d
     apt-get install -y --no-install-recommends git-lfs && \
     rm -rf /var/lib/apt/lists/*
 
+# Headless Chrome, for R packages that render HTML to image/PDF through chromote:
+# webshot2, gt::gtsave("*.png"), pagedown::chrome_print(), and friends. Issue #1:
+# gt could not save a PNG because the image shipped no Chromium-based browser.
+#
+# Two things here are container-specific and easy to get wrong:
+#  * Ubuntu's apt `chromium`/`chromium-browser` is a transitional *snap* that does
+#    not run inside a container, so we install Google Chrome's own .deb (it pulls
+#    its runtime deps -- libnss3, fonts, ... -- via apt).
+#  * ROOTLESS is the primary runtime, and Chrome's sandbox needs a setuid helper
+#    or nested user namespaces -- neither exists under Singularity -- so it must
+#    launch with --no-sandbox. chromote only adds that flag when uid == 0, which
+#    is never the case here. So CHROMOTE_CHROME points at a wrapper that always
+#    passes --no-sandbox plus container-friendly flags, and every chromote-based
+#    package inherits it. --disable-dev-shm-usage matters too: Chrome writes large
+#    files under /dev/shm, which is tiny in a container, and crashes without it.
+#
+# If the download or install fails, `google-chrome --version` fails the RUN --
+# an absent browser must not slip through green like past silent bugs.
+# hadolint ignore=DL3008
+RUN curl -fsSL -o /tmp/chrome.deb \
+      https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends /tmp/chrome.deb && \
+    rm -f /tmp/chrome.deb && \
+    rm -rf /var/lib/apt/lists/* && \
+    printf '%s\n' \
+      '#!/bin/bash' \
+      '# Rootless-container Chrome for chromote; see Dockerfile / issue #1.' \
+      'exec /opt/google/chrome/google-chrome --no-sandbox --disable-gpu --disable-dev-shm-usage "$@"' \
+      > /usr/local/bin/chrome-headless-shim && \
+    chmod a+rx /usr/local/bin/chrome-headless-shim && \
+    command -v google-chrome && \
+    google-chrome --version
+ENV CHROMOTE_CHROME=/usr/local/bin/chrome-headless-shim
+
 # Update R packages, and enable the in-IDE AI assistants.
 #
 # The two Posit Assistant options have opposite defaults, so the one that reads
