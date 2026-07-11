@@ -166,6 +166,13 @@ jobs:
             if ldconfig -p | grep -q "libcudart.so.13"; then ok "libcudart.so.13 in ldconfig"
             else bad "libcudart.so.13 missing"; fi
 
+            # issue #1: headless Chrome for webshot2 / gt::gtsave(png) / pagedown,
+            # all of which drive Chrome through chromote via CHROMOTE_CHROME.
+            if command -v google-chrome >/dev/null; then ok "google-chrome on PATH"
+            else bad "google-chrome missing (gt/webshot2 png output fails)"; fi
+            if [ -x "${CHROMOTE_CHROME:-/nonexistent}" ]; then ok "CHROMOTE_CHROME shim present"
+            else bad "CHROMOTE_CHROME shim missing or not set"; fi
+
             exit $fail'
 
       # rserver needs writable state directories. Bind host dirs owned by uid 1000
@@ -180,6 +187,21 @@ jobs:
             -v /tmp/rs/run:/run \
             "$IMAGE" rserver --verify-installation=1 --server-user=rstudio
           echo "  ok    rserver --verify-installation exits 0 as uid 1000"
+
+      # Issue #1: headless Chrome must actually render ROOTLESS -- that is the whole
+      # point. gt/webshot2/pagedown drive Chrome through chromote, which under
+      # Singularity runs as a non-root uid with no usable sandbox. Exercise the
+      # shim the way chromote will: run it headless as uid 1000 and screenshot a
+      # data URI. This step fails on any image before this fix (no browser at all).
+      - name: Headless Chrome renders (rootless)
+        run: |
+          docker run --rm --user 1000:1000 \
+            -e HOME=/home/rstudio -w /home/rstudio "$IMAGE" bash -euc '
+            "$CHROMOTE_CHROME" --headless --screenshot=shot.png \
+              --window-size=200,120 --user-data-dir="$PWD/chrome-data" \
+              "data:text/html,<h1>ok</h1>"
+            test -s shot.png
+            echo "  ok    headless Chrome wrote $(stat -c%s shot.png) byte PNG as uid 1000"'
 
       # End-to-end: this is what a user means by "PDF output works". It failed in
       # every image published before v1.2.0.

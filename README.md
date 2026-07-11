@@ -152,6 +152,9 @@ docker build --build-arg R_VERSION=4.6 --build-arg RSTUDIO_VERSION=2026.06.0+242
 - Quarto (latest version)
 - TinyTeX (LaTeX distribution), installed to `/opt/TinyTeX` and on `PATH` for all users
 - Pandoc
+- Headless Google Chrome, for HTML→image/PDF rendering via `chromote` (`webshot2`,
+  `gt::gtsave("*.png")`, `pagedown`). It runs rootless: `CHROMOTE_CHROME` points at a
+  `--no-sandbox` wrapper, since Chrome's sandbox cannot initialise under Singularity.
 
 ### AI Assistants
 Both are enabled in `/etc/rstudio/rsession.conf` and require the user to sign in
