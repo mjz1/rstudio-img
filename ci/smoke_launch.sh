@@ -16,6 +16,11 @@
 # if a flag has to be dropped here because Posit removed it, the app needs
 # the same edit before it can run that RStudio version).
 #
+# --www-address is pinned to 0.0.0.0 rather than left to the default: the
+# session must be reachable from another host (the OnDemand web node), and a
+# default that moves to loopback-only silently breaks that -- the first run
+# of this test against RStudio 2026.07.0 failed exactly that way.
+#
 # Rootless throughout (uid 1000), same as the invariants: Singularity runs
 # the image as an unprivileged user, so a check that passes as root proves
 # nothing.
@@ -81,6 +86,7 @@ docker run -d --name "$NAME" --user 1000:1000 \
   rserver \
     --database-config-file=/tmp/database.conf \
     --server-user=rstudio \
+    --www-address=0.0.0.0 \
     --www-port="$PORT" \
     --auth-none=0 \
     --auth-pam-require-password-prompt=0 \
@@ -99,8 +105,10 @@ diag() {
   docker exec "$NAME" ps -ef 2>&1 | sed 's/^/        /' || true
   echo "        ---- state dirs ----"
   docker exec "$NAME" ls -la /run/rstudio-server /var/lib/rstudio-server 2>&1 | sed 's/^/        /' || true
-  echo "        ---- in-container curl ----"
+  echo "        ---- in-container curl (loopback) ----"
   docker exec "$NAME" bash -c "curl -sS -m 5 -o /dev/null -w '%{http_code}\n' http://127.0.0.1:${PORT}/auth-sign-in" 2>&1 | sed 's/^/        /' || true
+  echo "        ---- in-container curl (eth0) ----"
+  docker exec "$NAME" bash -c "curl -sS -m 5 -o /dev/null -w '%{http_code}\n' http://\$(hostname -i | awk '{print \$1}'):${PORT}/auth-sign-in" 2>&1 | sed 's/^/        /' || true
 }
 
 # Poll the sign-in page. 90 s is generous -- a healthy rserver serves it in
