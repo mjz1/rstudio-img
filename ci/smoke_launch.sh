@@ -89,19 +89,33 @@ docker run -d --name "$NAME" --user 1000:1000 \
     --auth-timeout-minutes=10080 \
     --rsession-path=/opt/smoke/rsession.sh >/dev/null
 
+# On failure, "no output" must still leave evidence: what is running, what is
+# listening, and whether the page is reachable from INSIDE the container --
+# which splits "rserver never bound the port" from "docker port mapping".
+diag() {
+  echo "        ---- docker logs ----"
+  docker logs "$NAME" 2>&1 | sed 's/^/        /' || true
+  echo "        ---- processes ----"
+  docker exec "$NAME" ps -ef 2>&1 | sed 's/^/        /' || true
+  echo "        ---- state dirs ----"
+  docker exec "$NAME" ls -la /run/rstudio-server /var/lib/rstudio-server 2>&1 | sed 's/^/        /' || true
+  echo "        ---- in-container curl ----"
+  docker exec "$NAME" bash -c "curl -sS -m 5 -o /dev/null -w '%{http_code}\n' http://127.0.0.1:${PORT}/auth-sign-in" 2>&1 | sed 's/^/        /' || true
+}
+
 # Poll the sign-in page. 90 s is generous -- a healthy rserver serves it in
 # well under 10 -- but a loaded CI runner should not produce a false failure.
 page="$work/signin.html"
 deadline=$((SECONDS + 90))
 until curl -fsS -o "$page" "http://127.0.0.1:${PORT}/auth-sign-in" 2>/dev/null; do
   if [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" != "true" ]; then
-    echo "  FAIL  rserver exited before serving the sign-in page; its output:"
-    docker logs "$NAME" 2>&1 | sed 's/^/        /'
+    echo "  FAIL  rserver exited before serving the sign-in page"
+    diag
     exit 1
   fi
   if (( SECONDS >= deadline )); then
-    echo "  FAIL  rserver is running but never served /auth-sign-in; its output:"
-    docker logs "$NAME" 2>&1 | sed 's/^/        /'
+    echo "  FAIL  rserver is running but never served /auth-sign-in"
+    diag
     exit 1
   fi
   sleep 2
