@@ -18,8 +18,15 @@
 #
 # --www-address is pinned to 0.0.0.0 rather than left to the default: the
 # session must be reachable from another host (the OnDemand web node), and a
-# default that moves to loopback-only silently breaks that -- the first run
-# of this test against RStudio 2026.07.0 failed exactly that way.
+# default that ever moved to loopback-only would break that silently. The
+# app pins it for the same reason.
+#
+# The container runs with --network host, as singularity does (no namespace,
+# no port mapping) -- docker's -p mapping proved unreliable on CI runners
+# (rserver served 200 on loopback AND eth0 inside the container while the
+# published port never answered), and production has no mapping to model.
+# The poll targets the host's network address, not loopback, because that is
+# the address family the web node actually uses.
 #
 # Rootless throughout (uid 1000), same as the invariants: Singularity runs
 # the image as an unprivileged user, so a check that passes as root proves
@@ -27,7 +34,9 @@
 set -euo pipefail
 
 IMAGE="${IMAGE:?set IMAGE to the tag to test}"
-PORT="${PORT:-8787}"
+# A random high port: with --network host the container shares the host's
+# ports, and 8787 belongs to whatever else the runner may be doing.
+PORT="${PORT:-$((RANDOM % 20000 + 40000))}"
 NAME="rstudio-smoke-launch-$$"
 
 work=$(mktemp -d)
@@ -73,8 +82,11 @@ EOF
 chmod 755 "$work/etc/auth" "$work/etc/rsession.sh"
 sudo chown -R 1000:1000 "$work" 2>/dev/null || chown -R 1000:1000 "$work"
 
+ADDR=$(hostname -I 2>/dev/null | awk '{print $1}')
+ADDR=${ADDR:-127.0.0.1}
+
 docker run -d --name "$NAME" --user 1000:1000 \
-  -p "127.0.0.1:${PORT}:${PORT}" \
+  --network host \
   -v "$work/lib:/var/lib/rstudio-server" \
   -v "$work/run:/run" \
   -v "$work/etc/logging.conf:/etc/rstudio/logging.conf:ro" \
@@ -115,7 +127,7 @@ diag() {
 # well under 10 -- but a loaded CI runner should not produce a false failure.
 page="$work/signin.html"
 deadline=$((SECONDS + 90))
-until curl -fsS -o "$page" "http://127.0.0.1:${PORT}/auth-sign-in" 2>/dev/null; do
+until curl -fsS -o "$page" "http://${ADDR}:${PORT}/auth-sign-in" 2>/dev/null; do
   if [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" != "true" ]; then
     echo "  FAIL  rserver exited before serving the sign-in page"
     diag
