@@ -116,6 +116,19 @@ consequences:
 - The weekly gate **fails open**: a missing image, missing label, or registry
   error reads as empty and triggers a build. The worst failure mode is an
   unnecessary rebuild, never a silently missed release.
+- **Nothing is pushed that has not run.** The publish workflow executes the
+  smoke suite (`ci/*.sh`) between build and push in every matrix job -- the
+  same scripts PR validation runs, so the two cannot drift apart. Edit the
+  scripts, not the workflows, to change what is checked.
+- `ci/smoke_launch.sh` starts rserver with the downstream OnDemand app's
+  exact flag set (mirrors `template/script.sh.erb` in mjz1/openondemandapps).
+  When that app changes its rserver invocation, this script needs the same
+  change -- and if Posit removes a flag and it has to be dropped here, the
+  app needs the matching edit before it can run that RStudio version.
+- When a scheduled run detects a new RStudio release it opens a GitHub issue
+  with Posit's release notes for the new version(s). That issue is the
+  human notification that the rolling tags moved and why; review it for
+  option deprecations and auth changes, then close it.
 - Publishing only happens on a GitHub release (or `workflow_dispatch`). Merging
   to `main` runs PR validation, which builds but does not push.
 - Tag rules in `build_push.yaml` are guarded against `refs/heads/dev` so a
