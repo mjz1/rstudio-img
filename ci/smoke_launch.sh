@@ -39,10 +39,17 @@ IMAGE="${IMAGE:?set IMAGE to the tag to test}"
 PORT="${PORT:-$((RANDOM % 20000 + 40000))}"
 NAME="rstudio-smoke-launch-$$"
 
+# $work is chowned to uid 1000 below and becomes unwritable to THIS user --
+# anything this script itself writes (like the fetched sign-in page) must
+# live elsewhere. Getting that wrong cost four CI cycles: curl received
+# HTTP 200, exited 23 on the unwritable -o target, and under -f with stderr
+# silenced that is indistinguishable from "connection failed".
 work=$(mktemp -d)
+page=$(mktemp)
 cleanup() {
   docker rm -f "$NAME" >/dev/null 2>&1 || true
   sudo rm -rf "$work" 2>/dev/null || rm -rf "$work" || true
+  rm -f "$page"
 }
 trap cleanup EXIT
 
@@ -121,11 +128,15 @@ diag() {
   docker exec "$NAME" bash -c "curl -sS -m 5 -o /dev/null -w '%{http_code}\n' http://127.0.0.1:${PORT}/auth-sign-in" 2>&1 | sed 's/^/        /' || true
   echo "        ---- in-container curl (eth0) ----"
   docker exec "$NAME" bash -c "curl -sS -m 5 -o /dev/null -w '%{http_code}\n' http://\$(hostname -i | awk '{print \$1}'):${PORT}/auth-sign-in" 2>&1 | sed 's/^/        /' || true
+  # The exact command the poll runs, un-silenced: if these disagree with the
+  # probes above, the problem is THIS side of the socket (curl exit 23 --
+  # an unwritable -o target -- reads as "never served" otherwise).
+  echo "        ---- host-side poll curl, verbose ----"
+  curl -v -m 5 -o "$page" "http://${ADDR}:${PORT}/auth-sign-in" 2>&1 | tail -12 | sed 's/^/        /' || true
 }
 
 # Poll the sign-in page. 90 s is generous -- a healthy rserver serves it in
 # well under 10 -- but a loaded CI runner should not produce a false failure.
-page="$work/signin.html"
 deadline=$((SECONDS + 90))
 until curl -fsS -o "$page" "http://${ADDR}:${PORT}/auth-sign-in" 2>/dev/null; do
   if [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" != "true" ]; then
