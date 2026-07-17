@@ -107,8 +107,15 @@ consequences:
 
 ## Tags and releases
 
-- `4.3`–`4.6` and `latest` are **rolling**: the monthly scheduled rebuild moves
-  them. Anything downstream that needs reproducibility must pin by digest.
+- `4.3`–`4.6` and `latest` are **rolling**: the scheduled rebuilds move them --
+  weekly when Posit ships a new stable RStudio Server (gated on the
+  `io.github.mjz1.rstudio-img.rstudio-server-version` label of the published
+  `latest`), monthly unconditionally (R patch releases, Quarto and the apt
+  layer drift independently of RStudio, so the gate cannot replace the monthly
+  rebuild). Anything downstream that needs reproducibility must pin by digest.
+- The weekly gate **fails open**: a missing image, missing label, or registry
+  error reads as empty and triggers a build. The worst failure mode is an
+  unnecessary rebuild, never a silently missed release.
 - Publishing only happens on a GitHub release (or `workflow_dispatch`). Merging
   to `main` runs PR validation, which builds but does not push.
 - Tag rules in `build_push.yaml` are guarded against `refs/heads/dev` so a

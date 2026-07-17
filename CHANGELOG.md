@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Weekly RStudio release gate.** A Monday cron resolves Posit's current stable RStudio Server version and rebuilds all images only when the published `latest` does not already contain it, so a new RStudio release reaches the rolling tags within a week instead of waiting for the monthly rebuild. The monthly unconditional rebuild remains: R patch releases, Quarto, and apt-layer updates drift independently of RStudio, and the gate cannot see them. The gate fails open — a missing image, missing label, or registry error triggers a build, so the worst failure mode is an unnecessary rebuild, never a missed release.
+- Images now record the RStudio Server version they were built with in the `io.github.mjz1.rstudio-img.rstudio-server-version` label, readable from the registry without pulling the image (this is what the weekly gate compares against).
+
+### Changed
+- The RStudio version is now resolved once per workflow run instead of once per matrix job, so all four images in a run are guaranteed to be built with the same version even if Posit releases mid-run.
+
 ## [1.3.1] - 2026-07-10
 
 ### Fixed

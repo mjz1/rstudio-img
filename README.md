@@ -303,9 +303,10 @@ To add support for a new R version:
 Images are automatically built and pushed to Docker Hub and GitHub Container Registry:
 - On GitHub releases (all R versions)
 - On manual workflow dispatch
-- On a monthly schedule, so the rolling tags (`4.3`–`4.6`, `latest`) pick up new RStudio Server, Quarto, and R patch releases automatically
+- On a weekly schedule (Mondays) **when Posit has released a new stable RStudio Server**: the workflow compares the current stable version against the one recorded in the published `latest` image's `io.github.mjz1.rstudio-img.rstudio-server-version` label and skips the build if they match
+- On a monthly schedule unconditionally, so the rolling tags (`4.3`–`4.6`, `latest`) also pick up new Quarto and R patch releases and apt-layer updates, which the RStudio-version check cannot see
 
-The CI resolves the current stable RStudio Server version and passes it as a build argument, so a new Posit release invalidates the build cache and gets picked up on the next build.
+The CI resolves the current stable RStudio Server version and passes it as a build argument, so a new Posit release invalidates the build cache and gets picked up on the next build. Every image records that version in the label above, so you can ask a registry which RStudio Server an image contains without pulling it.
 
 Dependabot keeps the GitHub Actions versions up to date.
 

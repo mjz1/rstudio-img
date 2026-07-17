@@ -5,9 +5,16 @@ on:
     types: [published]
   workflow_dispatch:
   schedule:
-    # Monthly rebuild so rolling tags pick up new RStudio Server, Quarto,
-    # and R patch releases without requiring a manual release
+    # Monthly unconditional rebuild so rolling tags pick up new R patch
+    # releases, Quarto, and apt-layer updates -- drift the RStudio-version
+    # gate below cannot see
     - cron: '0 6 1 * *'
+    # Weekly RStudio release check (Mondays). Builds only when Posit's stable
+    # channel has moved past what the published `latest` image contains -- see
+    # the `check` job. On a Monday the 1st both crons fire; the concurrency
+    # group serialises them and the gated run then sees the fresh label and
+    # skips.
+    - cron: '0 6 * * 1'
 
 env:
   LATEST_R_VERSION: '4.6'
@@ -23,9 +30,73 @@ permissions:
   packages: write
 
 jobs:
+  # Resolves the current stable RStudio Server version once (the matrix jobs
+  # consume it, so all four builds are guaranteed the same version even if
+  # Posit releases mid-run), and decides whether this run should build at all.
+  #
+  # Only the weekly cron is gated: it skips the build when the published
+  # `latest` image already contains the current RStudio release, read back
+  # from the io.github.mjz1.rstudio-img.rstudio-server-version label without
+  # pulling the image. Releases, manual dispatches, and the monthly rebuild
+  # always build. The gate fails open -- a missing image, missing label
+  # (pre-label images), or registry error all read as empty and trigger a
+  # build, so the worst failure mode is an unnecessary rebuild, never a
+  # missed release.
+  check:
+    name: Resolve RStudio version and gate scheduled build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.rstudio.outputs.version }}
+      build: ${{ steps.gate.outputs.build }}
+    steps:
+      - name: Resolve latest stable RStudio Server version
+        id: rstudio
+        run: |
+          effective_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+            "https://rstudio.org/download/latest/stable/server/jammy/rstudio-server-latest-amd64.deb")
+          filename=$(basename "$effective_url")
+          version=${filename#rstudio-server-}
+          version=${version%-amd64.deb}
+          version=${version/-/+}
+          echo "Resolved RStudio Server version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Decide whether to build
+        id: gate
+        env:
+          CURRENT: ${{ steps.rstudio.outputs.version }}
+          WEEKLY: ${{ github.event_name == 'schedule' && github.event.schedule == '0 6 * * 1' }}
+        run: |
+          if [ "$WEEKLY" != "true" ]; then
+            echo "Not the weekly release check; building unconditionally."
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          published=$(docker buildx imagetools inspect \
+            "ghcr.io/${{ github.repository }}:latest" \
+            --format '{{ index .Image.Config.Labels "io.github.mjz1.rstudio-img.rstudio-server-version" }}' \
+            || true)
+          echo "Published: '${published}'  Current stable: '${CURRENT}'"
+          if [ "$published" = "$CURRENT" ]; then
+            echo "Published latest already contains ${CURRENT}; skipping build."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New RStudio Server release detected; building."
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
     name: Lint Dockerfile and Scripts
     runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.build == 'true'
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
@@ -47,7 +118,7 @@ jobs:
   push_to_registry:
     name: Push Docker image for R ${{ matrix.r_version }}
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [check, lint]
     strategy:
       fail-fast: false
       matrix:
@@ -55,18 +126,6 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
-
-      - name: Resolve latest stable RStudio Server version
-        id: rstudio
-        run: |
-          effective_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
-            "https://rstudio.org/download/latest/stable/server/jammy/rstudio-server-latest-amd64.deb")
-          filename=$(basename "$effective_url")
-          version=${filename#rstudio-server-}
-          version=${version%-amd64.deb}
-          version=${version/-/+}
-          echo "Resolved RStudio Server version: $version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v4
@@ -133,7 +192,7 @@ jobs:
           load: true
           build-args: |
             R_VERSION=${{ matrix.r_version }}
-            RSTUDIO_VERSION=${{ steps.rstudio.outputs.version }}
+            RSTUDIO_VERSION=${{ needs.check.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
