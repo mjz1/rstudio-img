@@ -4,7 +4,7 @@
 #   IMAGE=<tag> ci/smoke_launch.sh
 #
 # Starts rserver the way the downstream Open OnDemand app does -- the same
-# flag set and config files as mjz1/openondemandapps' rstudio_dev
+# flag set and config files as mjz1/rstudio-ood's
 # template/script.sh.erb -- then polls the port and asserts the sign-in page
 # is served. rserver refuses to start on an unknown option, so an RStudio
 # release that removes or renames any flag the app passes becomes a red CI
@@ -34,9 +34,11 @@
 set -euo pipefail
 
 IMAGE="${IMAGE:?set IMAGE to the tag to test}"
-# A random high port: with --network host the container shares the host's
-# ports, and 8787 belongs to whatever else the runner may be doing.
-PORT="${PORT:-$((RANDOM % 20000 + 40000))}"
+# A random port BELOW the Linux ephemeral range (32768-60999): with
+# --network host the container shares the host's ports, and a port inside
+# the ephemeral range can be snatched by any outbound connection's source
+# port between now and rserver's bind.
+PORT="${PORT:-$((RANDOM % 10000 + 21000))}"
 NAME="rstudio-smoke-launch-$$"
 
 # $work is chowned to uid 1000 below and becomes unwritable to THIS user --
@@ -89,8 +91,14 @@ EOF
 chmod 755 "$work/etc/auth" "$work/etc/rsession.sh"
 sudo chown -R 1000:1000 "$work" 2>/dev/null || chown -R 1000:1000 "$work"
 
-ADDR=$(hostname -I 2>/dev/null | awk '{print $1}')
-ADDR=${ADDR:-127.0.0.1}
+# First IPv4 specifically -- `hostname -I` can list IPv6 too, and a bare v6
+# address is malformed in a URL without brackets. Falling back to loopback
+# loses the bind-address half of the check, so say so out loud.
+ADDR=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -m1 -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true)
+if [ -z "$ADDR" ]; then
+  echo "  note  no IPv4 from hostname -I; polling loopback (bind-address coverage lost)"
+  ADDR=127.0.0.1
+fi
 
 docker run -d --name "$NAME" --user 1000:1000 \
   --network host \

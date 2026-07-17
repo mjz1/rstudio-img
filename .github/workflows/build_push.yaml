@@ -9,11 +9,13 @@ on:
     # releases, Quarto, and apt-layer updates -- drift the RStudio-version
     # gate below cannot see
     - cron: '0 6 1 * *'
-    # Weekly RStudio release check (Mondays). Builds only when Posit's stable
-    # channel has moved past what the published `latest` image contains -- see
-    # the `check` job. On a Monday the 1st both crons fire; the concurrency
-    # group serialises them and the gated run then sees the fresh label and
-    # skips.
+    # Weekly RStudio release check (Mondays). Builds only when some published
+    # tag does not yet carry Posit's current stable release -- see the `check`
+    # job. On a Monday the 1st both crons fire; the concurrency group
+    # serialises them and the gated run then sees the fresh labels and skips.
+    # This exact string is compared against github.event.schedule in the
+    # check job's WEEKLY env -- change both together, or the weekly run
+    # silently loses its gate and builds unconditionally.
     - cron: '0 6 * * 1'
 
 env:
@@ -38,14 +40,19 @@ jobs:
   # consume it, so all four builds are guaranteed the same version even if
   # Posit releases mid-run), and decides whether this run should build at all.
   #
-  # Only the weekly cron is gated: it skips the build when the published
-  # `latest` image already contains the current RStudio release, read back
-  # from the io.github.mjz1.rstudio-img.rstudio-server-version label without
-  # pulling the image. Releases, manual dispatches, and the monthly rebuild
-  # always build. The gate fails open -- a missing image, missing label
-  # (pre-label images), or registry error all read as empty and trigger a
-  # build, so the worst failure mode is an unnecessary rebuild, never a
-  # missed release.
+  # Only the weekly cron is gated: it skips the build only when EVERY rolling
+  # tag on BOTH registries already carries the current RStudio release, read
+  # back from the io.github.mjz1.rstudio-img.rstudio-server-version label
+  # without pulling any image. The gate's unit must equal the push unit --
+  # the push is per-matrix-job per-registry, so after a partial publish (one
+  # R version failed its smoke test, one registry's push exhausted retries)
+  # some tags carry the new version and some do not. A gate that read only
+  # ghcr `latest` (pushed by the 4.6 job) would be satisfied by exactly that
+  # state and skip forever while the other tags stayed stale. Releases,
+  # manual dispatches, and the monthly rebuild always build. The gate fails
+  # open -- a missing image, missing label (pre-label images), or registry
+  # error all read as not-current and trigger a build, so the worst failure
+  # mode is an unnecessary rebuild, never a missed release.
   check:
     name: Resolve RStudio version and gate scheduled build
     runs-on: ubuntu-latest
@@ -75,6 +82,10 @@ jobs:
       - name: Read RStudio version of the published latest image
         id: published
         run: |
+          # ghcr `latest` only, as CONTEXT for the release-notes step (the
+          # "old -> new" line and where the notes extraction stops). The gate
+          # itself sweeps every tag below -- `latest` alone is not a safe
+          # gate input, because only the 4.6 matrix job pushes it.
           published=$(docker buildx imagetools inspect \
             "ghcr.io/${{ github.repository }}:latest" \
             --format '{{ index .Image.Config.Labels "io.github.mjz1.rstudio-img.rstudio-server-version" }}' \
@@ -86,23 +97,41 @@ jobs:
         id: gate
         env:
           CURRENT: ${{ steps.rstudio.outputs.version }}
-          PUBLISHED: ${{ steps.published.outputs.version }}
+          # The cron string must equal the weekly entry in on.schedule at the
+          # top of this file. If they drift apart, WEEKLY is never true and
+          # the weekly run silently builds unconditionally -- no error marks
+          # the gate as defeated.
           WEEKLY: ${{ github.event_name == 'schedule' && github.event.schedule == '0 6 * * 1' }}
         run: |
-          if [ -n "$PUBLISHED" ] && [ "$PUBLISHED" = "$CURRENT" ]; then
-            changed=false
-          else
+          # Sweep every tag the matrix pushes, on both registries. The tag
+          # and repo lists mirror push_to_registry's matrix and the
+          # metadata-action `images:` list -- keep all three in sync.
+          stale=""
+          for repo in "ghcr.io/${{ github.repository }}" "zatzmanm/rstudio"; do
+            for tag in 4.3 4.4 4.5 4.6 latest; do
+              v=$(docker buildx imagetools inspect "$repo:$tag" \
+                --format '{{ index .Image.Config.Labels "io.github.mjz1.rstudio-img.rstudio-server-version" }}' \
+                2>/dev/null || true)
+              echo "  $repo:$tag -> '${v:-<none>}'"
+              [ "$v" = "$CURRENT" ] || stale="${stale:+$stale, }$repo:$tag"
+            done
+          done
+          if [ -n "$stale" ]; then
             changed=true
+            echo "Not carrying ${CURRENT}: ${stale}"
+          else
+            changed=false
+            echo "Every published tag already carries ${CURRENT}."
           fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
           if [ "$WEEKLY" != "true" ]; then
             echo "Not the weekly release check; building unconditionally."
             echo "build=true" >> "$GITHUB_OUTPUT"
           elif [ "$changed" = "true" ]; then
-            echo "New RStudio Server release (${PUBLISHED:-unknown} -> ${CURRENT}); building."
+            echo "Stale tags exist; building."
             echo "build=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Published latest already contains ${CURRENT}; skipping build."
+            echo "Nothing to do; skipping build."
             echo "build=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -114,8 +143,15 @@ jobs:
       # `rserver --test-config` and added path validation for
       # `database-config-file`, an option the OnDemand app passes explicitly.
       # Release/dispatch runs skip this: a human is already present.
+      # Keyed on the `latest` label rather than the gate's stale list: the
+      # gate also builds when a PARTIAL publish left some tags behind on the
+      # same version, and re-announcing an already-announced release would
+      # only exercise the dedup below.
       - name: Surface Posit release notes for the new version
-        if: github.event_name == 'schedule' && steps.gate.outputs.changed == 'true'
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.gate.outputs.changed == 'true' &&
+          steps.published.outputs.version != steps.rstudio.outputs.version
         env:
           GH_TOKEN: ${{ github.token }}
           CURRENT: ${{ steps.rstudio.outputs.version }}
@@ -147,7 +183,7 @@ jobs:
             echo
             echo "The rolling tags (\`4.3\`-\`4.6\`, \`latest\`) move to it once the publish run's smoke tests pass."
             echo "Review the notes below for new/removed rserver or rsession options, auth changes, and"
-            echo "deprecations that affect the OnDemand launch (mjz1/openondemandapps), then close this issue."
+            echo "deprecations that affect the OnDemand launch (mjz1/rstudio-ood), then close this issue."
             echo
             if [ -n "$section" ]; then
               echo "$section" | head -c 60000
@@ -161,13 +197,17 @@ jobs:
           cat "$body" >> "$GITHUB_STEP_SUMMARY"
 
           # One issue per version, even if extraction or the build fails and
-          # the next cron detects the same version again.
+          # the next cron detects the same version again. The whole issue
+          # path is guarded: this step ANNOUNCES the build, and a hiccup in
+          # the Issues API must not fail the check job and skip the build it
+          # was announcing (the run summary above already has the notes).
           existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state all \
-            --search "\"$title\" in:title" --json number --jq '.[].number' | head -1)
+            --search "\"$title\" in:title" --json number --jq '.[].number' 2>/dev/null | head -1 || true)
           if [ -n "$existing" ]; then
             echo "Issue #${existing} already covers ${cur}; not filing another."
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$body"
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$body" \
+              || echo "::warning::could not file the release-notes issue for ${cur}; notes are in this run's summary"
           fi
 
   lint:
