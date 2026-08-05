@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.4.0] - 2026-08-04
+
 ### Added
 - **Publishing is now gated on runtime smoke tests.** The publish workflow previously pushed to the rolling tags with no runtime check at all — including the scheduled rebuilds, the runs most likely to contain a surprise new RStudio Server. Each matrix job now runs the full smoke suite (image invariants, rserver launch, headless Chrome, Quarto→PDF) between build and push; a broken image fails the workflow instead of reaching `4.3`–`4.6`/`latest`. The checks live in `ci/*.sh`, shared verbatim with PR validation, so an image cannot pass review under one set of checks and ship under another.
 - **The smoke suite now starts rserver with the downstream OnDemand app's exact flag set** (`ci/smoke_launch.sh`: `--database-config-file`, `--auth-pam-helper-path`, `--rsession-path`, etc., mirroring `script.sh.erb` in mjz1/rstudio-ood) and asserts the sign-in page is served. rserver refuses to start on an unknown option, so an RStudio release that removes or renames a flag the app passes turns into a red CI run with the error in the log — instead of an OnDemand session whose only symptom is a port that never opens. Replaces the weaker `rserver --verify-installation` check.
