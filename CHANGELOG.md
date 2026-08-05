@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Publishing is now gated on runtime smoke tests.** The publish workflow previously pushed to the rolling tags with no runtime check at all — including the scheduled rebuilds, the runs most likely to contain a surprise new RStudio Server. Each matrix job now runs the full smoke suite (image invariants, rserver launch, headless Chrome, Quarto→PDF) between build and push; a broken image fails the workflow instead of reaching `4.3`–`4.6`/`latest`. The checks live in `ci/*.sh`, shared verbatim with PR validation, so an image cannot pass review under one set of checks and ship under another.
+- **The smoke suite now starts rserver with the downstream OnDemand app's exact flag set** (`ci/smoke_launch.sh`: `--database-config-file`, `--auth-pam-helper-path`, `--rsession-path`, etc., mirroring `script.sh.erb` in mjz1/rstudio-ood) and asserts the sign-in page is served. rserver refuses to start on an unknown option, so an RStudio release that removes or renames a flag the app passes turns into a red CI run with the error in the log — instead of an OnDemand session whose only symptom is a port that never opens. Replaces the weaker `rserver --verify-installation` check.
+- **Scheduled runs that detect a new RStudio release now surface Posit's release notes** (from docs.posit.co/ide/news) in the run summary and open a GitHub issue, one per version. A new release arriving via cron lands with no human watching; the issue is the notification that says *why* the tags moved and what to review (new/deprecated rserver options, auth changes — e.g. 2026.07.0 deprecated `--test-config` and added path validation for `database-config-file`, an option the OnDemand launch passes explicitly).
+- **Weekly RStudio release gate.** A Monday cron resolves Posit's current stable RStudio Server version and rebuilds only when some published rolling tag does not already carry it, so a new RStudio release reaches the tags within a week instead of waiting for the monthly rebuild. The gate reads the version label of **every rolling tag on both registries** and skips only when all match — its unit equals the push unit (per-R-version, per-registry), so a partial publish (one matrix job failed its smoke test, one registry push exhausted retries) keeps triggering rebuilds until every tag is current, rather than being satisfied by whichever job happened to push `latest`. The monthly unconditional rebuild remains: R patch releases, Quarto, and apt-layer updates drift independently of RStudio, and the gate cannot see them. The gate fails open — a missing image, missing label, or registry error reads as not-current and triggers a build, so the worst failure mode is an unnecessary rebuild, never a missed release.
+- Images now record the RStudio Server version they were built with in the `io.github.mjz1.rstudio-img.rstudio-server-version` label, readable from the registry without pulling the image (this is what the weekly gate compares against).
+
+### Changed
+- The RStudio version is now resolved once per workflow run instead of once per matrix job, so all four images in a run are guaranteed to be built with the same version even if Posit releases mid-run.
+
 ## [1.3.1] - 2026-07-10
 
 ### Fixed

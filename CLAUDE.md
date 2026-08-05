@@ -10,7 +10,7 @@ Docker images of RStudio Server + R, published to Docker Hub (`zatzmanm/rstudio`
 and GHCR (`ghcr.io/mjz1/rstudio-img`) for R 4.3–4.6.
 
 **The images are consumed on an HPC cluster via Singularity**, converted to
-`.sif` and run by an Open OnDemand app (see `mjz1/openondemandapps`, the
+`.sif` and run by an Open OnDemand app (see `mjz1/rstudio-ood`, the
 `rstudio_dev` app). That downstream consumer is the reason most of the rules
 below exist. Rolling tags `4.3`–`4.6` and `latest` are what the cluster syncs;
 treat them as production.
@@ -82,12 +82,13 @@ both the fixed and broken image because it was failing for an unrelated reason
 (a missing `libR.so`; a root-owned `--tmpfs`). A test that cannot fail proves
 nothing — verify a new check *fails* on an image that lacks the fix.
 
-PR validation runs a rootless **smoke test** (`pr-validation.yaml`, job `smoke`)
-that asserts the invariants above: no baked cookie key, a readable
-`database.conf`, `logger-type=stderr`, `xelatex` on `PATH`, the assistants
-enabled, `rserver --verify-installation` exiting 0 as uid 1000, and Quarto
-rendering an actual PDF. It builds one R version with `load: true` off the warm
-gha cache. Add a check here whenever you fix a runtime bug; each of those lines
+The rootless **smoke suite** lives in `ci/*.sh` and runs in PR validation
+(job `smoke`, one R version off the warm gha cache) AND in every publish
+matrix job between build and push: the image invariants (no baked cookie key,
+readable `database.conf`, `logger-type=stderr`, `xelatex` on `PATH`, the
+assistants enabled), a real rserver launch with the downstream app's flag set
+serving its sign-in page, headless Chrome rendering, and Quarto rendering an
+actual PDF. Add a check whenever you fix a runtime bug; each existing one
 corresponds to a regression that shipped.
 
 ## Config options are not what the docs say
@@ -107,10 +108,37 @@ consequences:
 
 ## Tags and releases
 
-- `4.3`–`4.6` and `latest` are **rolling**: the monthly scheduled rebuild moves
-  them. Anything downstream that needs reproducibility must pin by digest.
-- Publishing only happens on a GitHub release (or `workflow_dispatch`). Merging
-  to `main` runs PR validation, which builds but does not push.
+- `4.3`–`4.6` and `latest` are **rolling**: the scheduled rebuilds move them --
+  weekly when Posit ships a new stable RStudio Server, monthly unconditionally
+  (R patch releases, Quarto and the apt layer drift independently of RStudio,
+  so the gate cannot replace the monthly rebuild). Anything downstream that
+  needs reproducibility must pin by digest.
+- The weekly gate reads the `io.github.mjz1.rstudio-img.rstudio-server-version`
+  label of **every rolling tag on both registries** and skips only when all of
+  them carry the current release. The gate's unit must equal the push unit:
+  pushes happen per-matrix-job per-registry, so a partial publish (one R
+  version failed smoke, one registry push exhausted retries) leaves a mix --
+  a gate that read only ghcr `latest` would be satisfied by that mix and skip
+  forever while the other tags stayed stale.
+- The weekly gate **fails open**: a missing image, missing label, or registry
+  error reads as not-current and triggers a build. The worst failure mode is
+  an unnecessary rebuild, never a silently missed release.
+- **Nothing is pushed that has not run.** The publish workflow executes the
+  smoke suite (`ci/*.sh`) between build and push in every matrix job -- the
+  same scripts PR validation runs, so the two cannot drift apart. Edit the
+  scripts, not the workflows, to change what is checked.
+- `ci/smoke_launch.sh` starts rserver with the downstream OnDemand app's
+  exact flag set (mirrors `template/script.sh.erb` in mjz1/rstudio-ood).
+  When that app changes its rserver invocation, this script needs the same
+  change -- and if Posit removes a flag and it has to be dropped here, the
+  app needs the matching edit before it can run that RStudio version.
+- When a scheduled run detects a new RStudio release it opens a GitHub issue
+  with Posit's release notes for the new version(s). That issue is the
+  human notification that the rolling tags moved and why; review it for
+  option deprecations and auth changes, then close it.
+- Publishing happens on a GitHub release, a `workflow_dispatch`, or the
+  scheduled rebuilds (monthly unconditional, weekly gated). Merging to `main`
+  runs PR validation, which builds but does not push.
 - Tag rules in `build_push.yaml` are guarded against `refs/heads/dev` so a
   dispatch from `dev` cannot move the rolling tags. Keep new rules guarded.
 - **Every tag rule runs once per matrix entry.** Any rule not keyed on
@@ -162,7 +190,7 @@ RAPIDS) is scoped in issue #14. If you enable it, the driver caps the usable CUD
 version; pin accordingly.
 
 The consumer supplies the driver and requests the device. For the OnDemand app
-(`mjz1/openondemandapps`), that is `--gres=gpu:N` plus `--nv`, with `--nv` gated
+(`mjz1/rstudio-ood`), that is `--gres=gpu:N` plus `--nv`, with `--nv` gated
 on a runtime `/dev/nvidia*` probe — see that repo's CLAUDE.md.
 
 ## Headless Chrome

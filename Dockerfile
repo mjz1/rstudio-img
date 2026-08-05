@@ -308,9 +308,19 @@ RUN R -e 'update.packages(ask=F)' && \
     fi && \
     cat /etc/rstudio/rsession.conf
 
-# Add image metadata labels
+# Add image metadata labels.
+#
+# rstudio-server-version records the RSTUDIO_VERSION build arg. CI always
+# passes the resolved version (e.g. 2026.06.0+446), so published images carry
+# the real one; the weekly release gate in build_push.yaml reads it back from
+# the registry to decide whether a new RStudio release warrants a rebuild. A
+# local build that keeps the default is labelled with the channel name
+# ("stable") instead -- those are never published, and the gate treats any
+# mismatch as "rebuild", so a channel label can only ever cause an extra
+# build, not a missed one.
 LABEL org.opencontainers.image.title="RStudio Server with Scientific Computing Packages" \
       org.opencontainers.image.description="RStudio Server (AMD64) with comprehensive scientific computing libraries" \
       org.opencontainers.image.source="https://github.com/mjz1/rstudio-img" \
       org.opencontainers.image.vendor="zatzmanm" \
-      org.opencontainers.image.documentation="Built for AMD64. Runs via emulation on ARM64 hosts."
+      org.opencontainers.image.documentation="Built for AMD64. Runs via emulation on ARM64 hosts." \
+      io.github.mjz1.rstudio-img.rstudio-server-version="${RSTUDIO_VERSION}"
