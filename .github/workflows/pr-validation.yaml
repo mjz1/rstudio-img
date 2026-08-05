@@ -62,7 +62,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Build Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
@@ -112,7 +112,7 @@ jobs:
       # `load: true` is the point: the image must exist in the daemon to be run.
       # The gha cache is already warm from the build job, so this is cheap.
       - name: Build image for testing
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
