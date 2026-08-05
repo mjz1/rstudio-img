@@ -131,7 +131,7 @@ docker run -d -p 8787:8787 -e PASSWORD=rstudio rstudio-local:4.6
 By default the build installs the latest **stable** RStudio Server release. To pin an exact version (or use the `preview`/`daily` channel):
 
 ```bash
-docker build --build-arg R_VERSION=4.6 --build-arg RSTUDIO_VERSION=2026.06.0+242 -t rstudio-local:4.6 .
+docker build --build-arg R_VERSION=4.6 --build-arg RSTUDIO_VERSION=2026.07.1+147 -t rstudio-local:4.6 .
 ```
 
 ## Included Packages
@@ -303,8 +303,10 @@ To add support for a new R version:
 Images are automatically built and pushed to Docker Hub and GitHub Container Registry:
 - On GitHub releases (all R versions)
 - On manual workflow dispatch
-- On a weekly schedule (Mondays) **when Posit has released a new stable RStudio Server**: the workflow compares the current stable version against the one recorded in the published `latest` image's `io.github.mjz1.rstudio-img.rstudio-server-version` label and skips the build if they match
+- On a weekly schedule (Mondays) **when Posit has released a new stable RStudio Server**: the workflow compares the current stable version against the `io.github.mjz1.rstudio-img.rstudio-server-version` label of **every rolling tag on both registries** (`4.3`–`4.6` and `latest`, on GHCR and Docker Hub) and skips the build only when all of them already match. The gate's unit equals the push unit, so a partial publish — one matrix job failed its smoke tests, or one registry's push exhausted its retries — keeps triggering rebuilds until every tag is current, rather than being satisfied by whichever job happened to push `latest`. It fails open: a missing image, a missing label, or a registry error all read as "not current", so the worst case is an unnecessary build, never a missed release
 - On a monthly schedule unconditionally, so the rolling tags (`4.3`–`4.6`, `latest`) also pick up new Quarto and R patch releases and apt-layer updates, which the RStudio-version check cannot see
+
+**Nothing is published that has not run.** Every matrix job runs the full smoke suite between build and push — image invariants, an `rserver` launch with the downstream OnDemand app's exact flag set, headless Chrome, and a Quarto→PDF render (`ci/*.sh`, shared verbatim with PR validation). A broken image fails the workflow instead of reaching the rolling tags, and one R version failing does not hold back the others. This covers the scheduled rebuilds too — the runs most likely to contain a surprise new RStudio Server, with nobody watching. A scheduled run that detects a new release additionally opens an issue carrying Posit's release notes, since the option deprecations announced there are what break downstream launches.
 
 The CI resolves the current stable RStudio Server version and passes it as a build argument, so a new Posit release invalidates the build cache and gets picked up on the next build. Every image records that version in the label above, so you can ask a registry which RStudio Server an image contains without pulling it.
 
@@ -314,8 +316,9 @@ Dependabot keeps the GitHub Actions versions up to date.
 
 Pull requests trigger:
 - Dockerfile linting (hadolint)
-- Shell script linting (shellcheck)  
+- Shell script linting (shellcheck)
 - Test builds for all R versions (4.3, 4.4, 4.5, 4.6)
+- The rootless runtime smoke suite (`ci/*.sh`) against the R 4.6 build, as uid 1000 — the way Singularity, `podman run --user` and OpenShift run it. Building an image proves it compiles, not that it runs; these are the same scripts the publish workflow gates on, so an image cannot pass review under one set of checks and ship under another
 
 ## License
 

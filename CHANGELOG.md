@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The RStudio version is now resolved once per workflow run instead of once per matrix job, so all four images in a run are guaranteed to be built with the same version even if Posit releases mid-run.
+- **The README's CI/CD section now describes the gate that actually shipped.** It still said the weekly check compares only the published `latest` image's label — the behaviour from *before* review, and precisely the bug review caught: `latest` is pushed by the 4.6 job alone, so a partial publish would satisfy that gate indefinitely while the other tags stayed stale. It now documents the full sweep (every rolling tag, both registries), the fail-open behaviour, the smoke gating between build and push, and the release-notes issue. The rootless smoke suite that PR validation has run since 1.2.0 was never documented there at all.
 
 ## [1.3.1] - 2026-07-10
 
