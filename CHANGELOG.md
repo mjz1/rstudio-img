@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI no longer builds the same code twice per change.** PR validation ran on pull requests *and* again on the merge to `main`, rebuilding all four images for a tree that had just passed. It now runs on pull requests only and skips docs-only (`**.md`) changes. Direct pushes to `main` remain covered by the publish workflow's pre-push smoke suite.
 - **The GitHub Actions build cache is scoped per R version** (`scope=r4.3` … `r4.6`, shared by both workflows). The four builds previously shared one scope and, at ~11 GB against GitHub's 10 GB limit, evicted each other's layers.
 
+### Fixed
+- **PR validation broke on the hadolint 2.15.1 bump (PR #31).** hadolint now runs ShellCheck's SC3060 (*"In POSIX sh, string replacement is undefined"*) against the RStudio deb `RUN`, which uses `${RSTUDIO_VERSION//+/-}` to turn `2026.09.0+174` into the `-` form Posit's download URLs use. The warning does not apply here: line 6 sets `SHELL ["/bin/bash", "-o", "pipefail", "-c"]`, so every `RUN` is bash, not POSIX sh — hadolint simply does not take the `SHELL` instruction into account when choosing a ShellCheck dialect. Added `SC3060` to that `RUN`'s existing ignore rather than rewriting a working expansion into `sed` to appease a lint rule about a shell the image never uses.
+
 ## [1.4.0] - 2026-08-04
 
 ### Added

@@ -151,7 +151,7 @@ RUN . /etc/os-release && \
 # exact version like 2026.06.0+242 (CI passes the resolved current version so
 # new RStudio releases invalidate the build cache).
 ARG RSTUDIO_VERSION=stable
-# hadolint ignore=DL3008
+# hadolint ignore=DL3008,SC3060
 RUN . /etc/os-release && \
     case "${RSTUDIO_VERSION}" in \
       stable|preview|daily) \
