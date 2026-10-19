@@ -137,8 +137,9 @@ consequences:
   human notification that the rolling tags moved and why; review it for
   option deprecations and auth changes, then close it.
 - Publishing happens on a GitHub release, a `workflow_dispatch`, or the
-  scheduled rebuilds (monthly unconditional, weekly gated). Merging to `main`
-  runs PR validation, which builds but does not push.
+  scheduled rebuilds (monthly unconditional, weekly gated). PR validation runs
+  on pull requests only (not on the merge to `main`, which would rebuild the
+  tree the PR already built; docs-only PRs are skipped) and never pushes.
 - Tag rules in `build_push.yaml` are guarded against `refs/heads/dev` so a
   dispatch from `dev` cannot move the rolling tags. Keep new rules guarded.
 - **Every tag rule runs once per matrix entry.** Any rule not keyed on

@@ -313,8 +313,9 @@ jobs:
             RSTUDIO_VERSION=${{ needs.check.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Per-R-version scope, the same names pr-validation.yaml uses.
+          cache-from: type=gha,scope=r${{ matrix.r_version }}
+          cache-to: type=gha,mode=max,scope=r${{ matrix.r_version }}
 
       # Nothing is pushed that has not RUN. The scheduled rebuilds -- the runs
       # most likely to contain a surprise new RStudio Server -- previously went
