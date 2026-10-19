@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+- **VS Code R support: `languageserver` and `httpgd` are now in every image.** The vscode-R extension (used via the OnDemand `code serve-web` app) needs `languageserver` for completion and diagnostics and `httpgd` for its plot viewer; neither was installed, and none of the per-user libraries had them either. `httpgd` was archived from CRAN, so it is installed from its author's r-universe (nx10.r-universe.dev). The build fails if either package does not load, since `install.packages()` only warns on failure, and the smoke suite checks both load as a non-root user.
 
 ## [1.4.0] - 2026-08-04
 

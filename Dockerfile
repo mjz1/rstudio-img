@@ -308,6 +308,15 @@ RUN R -e 'update.packages(ask=F)' && \
     fi && \
     cat /etc/rstudio/rsession.conf
 
+# VS Code R support (the vscode-R extension, run via OnDemand `code serve-web`):
+# languageserver gives completion/diagnostics, httpgd the plot viewer. httpgd
+# was archived from CRAN, so it comes from its author's r-universe.
+#
+# install.packages() only *warns* when a package fails to build and R still
+# exits 0, so load each one afterwards and fail the RUN if it does not.
+RUN R -q -e 'install.packages(c("languageserver", "httpgd"), repos = c("https://nx10.r-universe.dev", getOption("repos")))' && \
+    R -q -e 'for (p in c("languageserver", "httpgd")) { if (!requireNamespace(p, quietly = TRUE)) stop(p, " did not install"); cat(p, format(packageVersion(p)), "\n") }'
+
 # Add image metadata labels.
 #
 # rstudio-server-version records the RSTUDIO_VERSION build arg. CI always
