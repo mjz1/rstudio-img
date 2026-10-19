@@ -312,9 +312,14 @@ RUN R -e 'update.packages(ask=F)' && \
 # languageserver gives completion/diagnostics, httpgd the plot viewer. httpgd
 # was archived from CRAN, so it comes from its author's r-universe.
 #
+# httpgd needs AsioHeaders >= 1.28.2, newer than the frozen CRAN snapshot the
+# R 4.3 image installs from (2024-04). AsioHeaders is header-only, so taking it
+# from current CRAN is safe; everything else keeps the image's own repos.
+#
 # install.packages() only *warns* when a package fails to build and R still
 # exits 0, so load each one afterwards and fail the RUN if it does not.
-RUN R -q -e 'install.packages(c("languageserver", "httpgd"), repos = c("https://nx10.r-universe.dev", getOption("repos")))' && \
+RUN R -q -e 'install.packages("AsioHeaders", repos = "https://cloud.r-project.org")' && \
+    R -q -e 'install.packages(c("languageserver", "httpgd"), repos = c("https://nx10.r-universe.dev", getOption("repos")))' && \
     R -q -e 'for (p in c("languageserver", "httpgd")) { if (!requireNamespace(p, quietly = TRUE)) stop(p, " did not install"); cat(p, format(packageVersion(p)), "\n") }'
 
 # Add image metadata labels.
