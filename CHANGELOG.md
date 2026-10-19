@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **VS Code R support: `languageserver` and `httpgd` are now in every image.** The vscode-R extension (used via the OnDemand `code serve-web` app) needs `languageserver` for completion and diagnostics and `httpgd` for its plot viewer; neither was installed, and none of the per-user libraries had them either. `httpgd` was archived from CRAN, so it is installed from its author's r-universe (nx10.r-universe.dev).  On R 4.3, whose CRAN snapshot is frozen at 2024-04, its header-only dependency `AsioHeaders` comes from current CRAN. The build fails if either package does not load, since `install.packages()` only warns on failure, and the smoke suite checks both load as a non-root user.
 
+### Changed
+- **CI no longer builds the same code twice per change.** PR validation ran on pull requests *and* again on the merge to `main`, rebuilding all four images for a tree that had just passed. It now runs on pull requests only and skips docs-only (`**.md`) changes. Direct pushes to `main` remain covered by the publish workflow's pre-push smoke suite.
+- **The GitHub Actions build cache is scoped per R version** (`scope=r4.3` … `r4.6`, shared by both workflows). The four builds previously shared one scope and, at ~11 GB against GitHub's 10 GB limit, evicted each other's layers.
+
 ## [1.4.0] - 2026-08-04
 
 ### Added

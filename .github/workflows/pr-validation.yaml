@@ -1,12 +1,15 @@
 name: PR Validation
 
+# No `push: main` trigger: a merge commit is the tree this workflow already
+# built on the PR, so re-validating it was a duplicate four-image build. A
+# commit pushed straight to main is still covered -- publishing runs the same
+# smoke suite before it pushes anything. Docs-only PRs build nothing.
 on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
+    paths-ignore:
+      - '**.md'
   workflow_dispatch:
 
 # A second push to the same PR supersedes the first; four 15-minute matrix
@@ -72,8 +75,10 @@ jobs:
             R_VERSION=${{ matrix.r_version }}
             RSTUDIO_VERSION=${{ steps.rstudio.outputs.version }}
           tags: rstudio-pr-validate:${{ matrix.r_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # One cache scope per R version (shared with build_push.yaml), so the
+          # four builds stop evicting each other's layers from the 10 GB cache.
+          cache-from: type=gha,scope=r${{ matrix.r_version }}
+          cache-to: type=gha,mode=max,scope=r${{ matrix.r_version }}
 
   # Building an image proves it compiles. It does not prove it runs, and every
   # serious bug this repo has shipped was a runtime failure behind a green build:
@@ -122,7 +127,7 @@ jobs:
             R_VERSION=${{ env.SMOKE_R_VERSION }}
             RSTUDIO_VERSION=${{ steps.rstudio.outputs.version }}
           tags: ${{ env.IMAGE }}
-          cache-from: type=gha
+          cache-from: type=gha,scope=r${{ env.SMOKE_R_VERSION }}
 
       # The smoke checks live in ci/ and are SHARED with the publish workflow,
       # which runs them between build and push -- an image cannot pass review

@@ -314,7 +314,7 @@ Dependabot keeps the GitHub Actions versions up to date.
 
 ### PR Validation
 
-Pull requests trigger:
+Pull requests that touch anything other than Markdown trigger (merges to `main` do not re-run it; the publish workflow runs the same smoke suite before pushing):
 - Dockerfile linting (hadolint)
 - Shell script linting (shellcheck)
 - Test builds for all R versions (4.3, 4.4, 4.5, 4.6)
