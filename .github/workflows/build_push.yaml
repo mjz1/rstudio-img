@@ -223,7 +223,7 @@ jobs:
       # workflow-level ignore is redundant. Keeping the two lint invocations
       # identical means PR validation cannot pass where publish would fail.
       - name: Lint Dockerfile with hadolint
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: Dockerfile
           failure-threshold: warning
