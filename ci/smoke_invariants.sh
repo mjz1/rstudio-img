@@ -54,4 +54,11 @@ else bad "google-chrome missing (gt/webshot2 png output fails)"; fi
 if [ -x "${CHROMOTE_CHROME:-/nonexistent}" ]; then ok "CHROMOTE_CHROME shim present"
 else bad "CHROMOTE_CHROME shim missing or not set"; fi
 
+# VS Code R support: install.packages() fails with only a warning, so check
+# the packages load as a non-root user rather than trusting the build log.
+for p in languageserver httpgd; do
+  if Rscript -e "quit(status = !requireNamespace('$p', quietly = TRUE))" 2>/dev/null; then ok "R package $p loads"
+  else bad "R package $p missing (VS Code R support broken)"; fi
+done
+
 exit $fail
