@@ -1,9 +1,21 @@
-ARG R_VERSION=4.6
+# 4.6.1, not 4.6: rocker/rstudio:4.6 moved to Ubuntu 26.04 (see the check below).
+ARG R_VERSION=4.6.1
 
 FROM rocker/rstudio:${R_VERSION}
 
 # Set shell to use pipefail for safer pipe operations
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Fail fast, and say why, on a base distro this file has not been ported to.
+# Several steps are distro-specific (NVIDIA's CUDA apt repo, the Posit deb
+# codename mapping), and on an unknown distro they fail with an unrelated-looking
+# apt error -- rocker/rstudio:4.6 moving to 26.04 "resolute" surfaced as
+# "cuda-cudart-12-9 has no installation candidate".
+RUN . /etc/os-release && \
+    case "${VERSION_CODENAME}" in \
+      jammy|noble) ;; \
+      *) echo "Unsupported base distro '${VERSION_CODENAME}'. Pin R_VERSION to a jammy/noble rocker tag, or port the CUDA and RStudio deb steps." >&2; exit 1 ;; \
+    esac
 
 # hadolint ignore=DL3008
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \

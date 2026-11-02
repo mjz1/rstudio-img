@@ -45,6 +45,15 @@ jobs:
       fail-fast: false
       matrix:
         r_version: ["4.3", "4.4", "4.5", "4.6"]
+        # r_base is the rocker/rstudio tag to build FROM, when it is not the
+        # bare r_version. rocker moved rocker/rstudio:4.6 (R 4.6.2) to Ubuntu
+        # 26.04 "resolute" on 2026-10-29; this Dockerfile supports jammy/noble
+        # only, so 4.6 builds from 4.6.1, which rocker froze on noble. Published
+        # tags and cache scopes still key on r_version. Drop this once the
+        # Dockerfile supports resolute.
+        include:
+          - r_version: "4.6"
+            r_base: "4.6.1"
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
@@ -72,7 +81,7 @@ jobs:
           push: false
           load: false            # Avoid loading into Docker to reduce disk use
           build-args: |
-            R_VERSION=${{ matrix.r_version }}
+            R_VERSION=${{ matrix.r_base || matrix.r_version }}
             RSTUDIO_VERSION=${{ steps.rstudio.outputs.version }}
           tags: rstudio-pr-validate:${{ matrix.r_version }}
           # One cache scope per R version (shared with build_push.yaml), so the
@@ -95,6 +104,8 @@ jobs:
     needs: lint
     env:
       SMOKE_R_VERSION: '4.6'
+      # rocker base tag for SMOKE_R_VERSION; keep in step with the build matrix's r_base.
+      SMOKE_R_BASE: '4.6.1'
       IMAGE: rstudio-smoke:test
     steps:
       - name: Check out the repo
@@ -124,7 +135,7 @@ jobs:
           push: false
           load: true
           build-args: |
-            R_VERSION=${{ env.SMOKE_R_VERSION }}
+            R_VERSION=${{ env.SMOKE_R_BASE }}
             RSTUDIO_VERSION=${{ steps.rstudio.outputs.version }}
           tags: ${{ env.IMAGE }}
           cache-from: type=gha,scope=r${{ env.SMOKE_R_VERSION }}

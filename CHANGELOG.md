@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **R 4.6 builds again.** On 2026-10-29 rocker moved `rocker/rstudio:4.6` (now R 4.6.2) from Ubuntu 24.04 "noble" to 26.04 "resolute". The R 4.6 publish job then failed at the CUDA runtime step (`cuda-cudart-12-9 has no installation candidate`) and the rolling `4.6`/`latest` tags stopped updating; the RStudio deb step would have failed next (Posit's codename mapping only covers jammy/noble). The 4.6 image now builds `FROM rocker/rstudio:4.6.1`, which rocker froze on noble, so it ships R 4.6.1 until the Dockerfile is ported to resolute. Published tag names are unchanged. The Dockerfile now also fails immediately, with a clear message, on any base distro other than jammy/noble.
+
 ### Added
 - **VS Code R support: `languageserver` and `httpgd` are now in every image.** The vscode-R extension (used via the OnDemand `code serve-web` app) needs `languageserver` for completion and diagnostics and `httpgd` for its plot viewer; neither was installed, and none of the per-user libraries had them either. `httpgd` was archived from CRAN, so it is installed from its author's r-universe (nx10.r-universe.dev).  On R 4.3, whose CRAN snapshot is frozen at 2024-04, its header-only dependency `AsioHeaders` comes from current CRAN. The build fails if either package does not load, since `install.packages()` only warns on failure, and the smoke suite checks both load as a non-root user.
 
