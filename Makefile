@@ -42,7 +42,7 @@ logs:
 
 # Build commands
 build:
-	docker build --platform linux/amd64 --build-arg R_VERSION=4.6 -t rstudio-local:4.6 .
+	docker build --platform linux/amd64 --build-arg R_VERSION=4.6.1 -t rstudio-local:4.6 .
 
 build-4.3:
 	docker build --platform linux/amd64 --build-arg R_VERSION=4.3 -t rstudio-local:4.3 .
@@ -54,7 +54,7 @@ build-4.5:
 	docker build --platform linux/amd64 --build-arg R_VERSION=4.5 -t rstudio-local:4.5 .
 
 build-4.6:
-	docker build --platform linux/amd64 --build-arg R_VERSION=4.6 -t rstudio-local:4.6 .
+	docker build --platform linux/amd64 --build-arg R_VERSION=4.6.1 -t rstudio-local:4.6 .
 
 # Build all supported R versions
 build-all:

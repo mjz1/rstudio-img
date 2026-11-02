@@ -73,8 +73,8 @@ Access at http://localhost:8787
 
 3. Edit `.env` to configure your setup:
    ```bash
-   # R version (4.3, 4.4, 4.5, or 4.6)
-   R_VERSION=4.6
+   # rocker base tag (4.3, 4.4, 4.5, or 4.6.1 -- rocker's 4.6 is now on Ubuntu 26.04, unsupported here)
+   R_VERSION=4.6.1
    
    # RStudio credentials
    RSTUDIO_USER=rstudio
@@ -119,7 +119,7 @@ make down
 Build for a specific R version:
 
 ```bash
-docker build --build-arg R_VERSION=4.6 -t rstudio-local:4.6 .
+docker build --build-arg R_VERSION=4.6.1 -t rstudio-local:4.6 .
 ```
 
 Run the built image:
@@ -131,7 +131,7 @@ docker run -d -p 8787:8787 -e PASSWORD=rstudio rstudio-local:4.6
 By default the build installs the latest **stable** RStudio Server release. To pin an exact version (or use the `preview`/`daily` channel):
 
 ```bash
-docker build --build-arg R_VERSION=4.6 --build-arg RSTUDIO_VERSION=2026.07.1+147 -t rstudio-local:4.6 .
+docker build --build-arg R_VERSION=4.6.1 --build-arg RSTUDIO_VERSION=2026.07.1+147 -t rstudio-local:4.6 .
 ```
 
 ## Included Packages
